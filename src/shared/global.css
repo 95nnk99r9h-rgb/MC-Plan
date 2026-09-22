@@ -817,7 +817,6 @@ a:hover { text-decoration: underline; }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 24px 30px 20px;
 }
 
 .start-inner {
@@ -827,19 +826,24 @@ a:hover { text-decoration: underline; }
   flex: 1;
 }
 
-/* Die Kopfzeile steht am Seitenrand, die Kacheln stehen mittig. */
+/*
+ * Die Kopfzeile steht am Seitenrand, die Kacheln stehen mittig. Marke und
+ * Wortmarke sitzen an derselben Stelle und in derselben Groesse wie in einem
+ * Bereich: die Marke wie .sidebar-brand am Kopf der Menueleiste, die Wortmarke
+ * wie .topbar-logo am rechten Rand der Kopfleiste.
+ */
 .start-kopf {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
   margin: 0 0 auto;
-  padding-bottom: 24px;
+  padding: 20px 28px 24px 20px;
 }
 .start-kopf-text { flex: 1; min-width: 0; }
-.start-kopf-text h1 { font-size: 19px; margin: 0; }
-.start-kopf-text p { margin: 1px 0 0; font-size: 12.5px; color: var(--text-secondary); }
-.start-logo { flex: none; }
+.start-kopf-text h1 { margin: 0; font-size: 15px; font-weight: 600; }
+.start-kopf-text p { margin: 0; font-size: 11.5px; color: var(--text-tertiary); }
+.start-logo { flex: none; align-self: flex-start; margin-top: 1px; }
 
 /* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch. */
 .start-kacheln {
@@ -922,7 +926,7 @@ a:hover { text-decoration: underline; }
 
 .start-fuss {
   margin: auto 0 0;
-  padding-top: 26px;
+  padding: 26px 20px 20px;
   font-size: 12px;
   color: var(--text-tertiary);
   text-align: center;
@@ -948,13 +952,12 @@ a:hover { text-decoration: underline; }
 .bereich-wechsel:hover { background: var(--bg-hover); color: var(--accent); }
 
 @media (max-width: 720px) {
-  .start { padding: 20px 16px; }
-  .start-kacheln { max-width: none; }
-  .start-kacheln { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .start-kopf { padding: 16px 16px 20px; }
+  .start-kacheln { max-width: none; padding: 0 16px; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .bereich-kachel-bild { height: 128px; }
   .bereich-kachel-bild svg { width: 46px; height: 46px; }
   .start-logo { display: none; }
-  .start-fuss { padding-top: 20px; text-align: left; }
+  .start-fuss { padding: 20px 16px 16px; text-align: left; }
 }
 
 /* ------------------------------------------------------------------ */

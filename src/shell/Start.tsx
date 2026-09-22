@@ -15,7 +15,7 @@ export function Start() {
             <p>Bitte einen Bereich wählen.</p>
           </div>
           <div className="start-logo">
-            <MailaenderLogo height={30} />
+            <MailaenderLogo height={34} />
           </div>
         </header>
 
