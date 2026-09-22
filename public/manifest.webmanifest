@@ -1,7 +1,7 @@
 {
-  "name": "MC Plan – Planlaufmanagement",
+  "name": "MC Plan",
   "short_name": "MC Plan",
-  "description": "Planlaufmanagement: Projekte, Planpakete, Planverzeichnisse und Planläufe mit Fristenüberwachung.",
+  "description": "MC Plan mit den Bereichen Planlaufmanagement und Baubetriebsplanung.",
   "lang": "de",
   "dir": "ltr",
   "start_url": "./",

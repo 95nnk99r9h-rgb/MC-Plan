@@ -1,8 +1,15 @@
-# MC Plan – Planlaufmanagement
+# MC Plan
 
-Verwaltungssoftware für Planläufe: Projekte, Planpakete/Pläne/Planverzeichnisse und die
-Prozessketten, die diese durchlaufen – mit Soll-/Ist-Terminen, Fristenüberwachung und
-vorbereiteten Erinnerungs-E-Mails.
+MC Plan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildschirm wählt:
+
+* **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
+  Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
+  Soll-/Ist-Terminen, Fristenüberwachung und vorbereiteten Erinnerungs-E-Mails.
+* **Baubetriebsplanung** – angelegt, aber noch ohne Inhalt.
+
+Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
+Browser, eigene Einstellungen, eigener Router. Alles Weitere in dieser Beschreibung betrifft das
+Planlaufmanagement.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
 (`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
@@ -19,7 +26,7 @@ Die Wortmarke in der Kopfzeile stammt aus der Datei `public/mailaender-consult.s
 hinterlegte Fassung ist mit der Systemschrift nachgezeichnet. Um das Original zu verwenden, genügt
 es, diese Datei durch die Originaldatei zu **ersetzen** – gleicher Name, gleicher Ort; eine
 PNG-Datei funktioniert ebenso (`public/mailaender-consult.png`, dann in
-`src/components/logos.tsx` die Konstante `MAILAENDER_DATEI` anpassen). Die Anwendung skaliert die
+`src/shared/logos.tsx` die Konstante `MAILAENDER_DATEI` anpassen). Die Anwendung skaliert die
 Datei ausschließlich über die Höhe, das Seitenverhältnis bleibt damit unverändert.
 
 ## Starten
@@ -59,7 +66,7 @@ Zwei Hilfen, falls die Einstellung nicht geändert werden kann oder soll:
 
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
 Ohne diese Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/PLM-DB/` führt das
-ebenfalls zu einer weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/fristen`), daher
+ebenfalls zu einer weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/planlauf/fristen`), daher
 funktionieren Direktaufrufe und das Neuladen ohne zusätzliche Serverregeln.
 
 ## Als App installieren (PWA)
@@ -292,26 +299,51 @@ Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage, Absenderangaben sowie die
 
 ## Aufbau des Codes
 
+MC Plan besteht aus zwei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
+seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen eigenen Router mit;
+die beiden greifen nicht aufeinander zu. Die Shell wählt anhand der ersten Wegmarke der Adresse
+aus, welcher Bereich geladen wird, und hängt ihn erst beim Betreten ein.
+
 ```
 src/
-  domain/        Fachlogik ohne UI-Bezug
-    types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
-    engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
-    email.ts     Platzhalter und Aufbereitung der Vorlagen
-    export.ts    Kurz- und Langfassung für Excel und PDF
-    seed.ts      Standard-Prozessketten und Demodaten
-  store/
-    storage.ts   Persistenz (localStorage) – Austauschpunkt für eine spätere Datenbank
-    store.tsx    Zentraler Zustand, alle Schreibzugriffe
-  lib/
+  main.tsx       Start der Anwendung, Umlenkung alter Lesezeichen
+  shell/         Startbildschirm und Bereichswechsel
+    Shell.tsx    Wählt Bereichsauswahl oder Bereich
+    Start.tsx    Startbildschirm mit den Bereichskacheln
+    bereiche.ts  Verzeichnis der Bereiche
+    router.ts    #/ · #/planlauf/… · #/baubetrieb/…
+  shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
+    ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
+    icons.tsx    Strichsymbole
+    logos.tsx    App-Symbol und Wortmarke
+    toast.tsx    Kurzmeldungen
+    dates.ts     Fristen- und Datumsrechnung
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
-    dates.ts     Fristen- und Datumsrechnung, router.ts, pwa.ts
-  pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Projektreiter)
-  components/    Wiederverwendbare Bausteine (ui.tsx, icons.tsx, EmailDialog …)
-  styles/        Design-Tokens im hellen Apple-Erscheinungsbild
+    pwa.ts       Registrierung des Service Workers
+    global.css   Design-Tokens im hellen Apple-Erscheinungsbild
+  bereiche/
+    planlauf/    Bereich „Planlaufmanagement“
+      index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
+      App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
+      domain/    Fachlogik ohne UI-Bezug
+        types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
+        engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
+        email.ts     Platzhalter und Aufbereitung der Vorlagen
+        export.ts    Kurz- und Langfassung für Excel und PDF
+        seed.ts      Standard-Prozessketten und Demodaten
+      store/
+        storage.ts   Persistenz (localStorage) – Austauschpunkt für eine spätere Datenbank
+        store.tsx    Zentraler Zustand, alle Schreibzugriffe
+      lib/router.ts  Hash-Adressen unterhalb von #/planlauf
+      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Projektreiter)
+      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe …)
+    baubetrieb/  Bereich „Baubetriebsplanung“ – angelegt, noch ohne Inhalt
 ```
+
+Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
+beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
 ## Gestaltung
 

@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
-import { StoreProvider } from './store/store';
-import { ToastProvider } from './components/toast';
-import { registriereServiceWorker } from './lib/pwa';
-import './styles/global.css';
+import { Shell } from './shell/Shell';
+import { alteLesezeichenUmlenken } from './shell/router';
+import { ToastProvider } from './shared/toast';
+import { registriereServiceWorker } from './shared/pwa';
+import './shared/global.css';
 
 // Dem Notausgang in index.html melden, dass die Anwendung läuft.
 declare global {
@@ -14,13 +14,15 @@ declare global {
 }
 window.planlaufGestartet?.();
 
+// Lesezeichen aus der Fassung ohne Bereiche gelten weiter – vor dem ersten
+// Rendern umlenken, damit die Shell schon die neue Adresse liest.
+alteLesezeichenUmlenken();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StoreProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </StoreProvider>
+    <ToastProvider>
+      <Shell />
+    </ToastProvider>
   </StrictMode>,
 );
 
