@@ -810,6 +810,98 @@ a:hover { text-decoration: underline; }
 .drop-zone:hover, .drop-zone.over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
 /* ------------------------------------------------------------------ */
+/* Bereichsauswahl und Bereichswechsel                                 */
+/* ------------------------------------------------------------------ */
+.start {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.start-inner { width: 100%; max-width: 680px; }
+
+.start-kopf {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.start-kopf-text { flex: 1; min-width: 0; }
+.start-kopf-text h1 { font-size: 26px; margin: 0; }
+.start-kopf-text p { margin: 2px 0 0; color: var(--text-secondary); }
+.start-logo { flex: none; }
+
+.start-kacheln { display: grid; gap: 12px; }
+
+.bereich-kachel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 18px 20px;
+  border: none;
+  background: var(--bg-elev);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.bereich-kachel:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.bereich-kachel:active { transform: translateY(0); }
+
+.bereich-kachel-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.bereich-kachel-text { flex: 1; min-width: 0; display: block; }
+.bereich-kachel-text strong { display: block; font-size: 16px; font-weight: 600; }
+.bereich-kachel-sub { display: block; font-size: 12.5px; color: var(--text-tertiary); }
+.bereich-kachel-text-lang {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.bereich-kachel-pfeil { flex: none; color: var(--text-tertiary); display: flex; }
+
+.start-fuss { margin: 22px 2px 0; font-size: 12px; color: var(--text-tertiary); }
+
+.bereich-wechsel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.bereich-wechsel:hover { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .start-kopf { flex-wrap: wrap; }
+  .start-logo { display: none; }
+  .bereich-kachel { padding: 14px 16px; gap: 12px; }
+}
+
+/* ------------------------------------------------------------------ */
 /* Telefon- und Tabletbreiten                                          */
 /* ------------------------------------------------------------------ */
 @media (max-width: 640px) {

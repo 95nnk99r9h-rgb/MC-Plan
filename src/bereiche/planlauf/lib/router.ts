@@ -1,4 +1,8 @@
-/** Minimaler Hash-Router – erlaubt Lesezeichen und Vor/Zurück im Browser. */
+/**
+ * Minimaler Hash-Router des Bereichs – erlaubt Lesezeichen und Vor/Zurück im
+ * Browser. Alle Adressen liegen unter dem Bereichspräfix #/planlauf; die Wahl
+ * des Bereichs selbst trifft die Shell.
+ */
 import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
@@ -19,19 +23,24 @@ const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'pakete', 'rollen', 'ketten'
 /** Frühere Adressen bleiben gültig: „adressbuch“ führt auf „rollen“. */
 const ALTE_TABS: Record<string, ProjektTab> = { adressbuch: 'rollen' };
 
+/** Präfix aller Adressen dieses Bereichs. */
+export const PREFIX = 'planlauf';
+
 export function routeToHash(r: Route): string {
   switch (r.view) {
     case 'projekt':
-      return `#/projekt/${r.projectId}/${r.tab}`;
+      return `#/${PREFIX}/projekt/${r.projectId}/${r.tab}`;
     case 'planlauf':
-      return `#/projekt/${r.projectId}/planlauf/${r.runId}`;
+      return `#/${PREFIX}/projekt/${r.projectId}/planlauf/${r.runId}`;
     default:
-      return `#/${r.view}`;
+      return `#/${PREFIX}/${r.view}`;
   }
 }
 
 export function hashToRoute(hash: string): Route {
   const teile = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  // Das Bereichspräfix gehört der Shell und wird hier übersprungen.
+  if (teile[0] === PREFIX) teile.shift();
   if (teile[0] === 'projekt' && teile[1]) {
     if (teile[2] === 'planlauf' && teile[3]) {
       return { view: 'planlauf', projectId: teile[1], runId: teile[3] };

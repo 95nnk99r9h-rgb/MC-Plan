@@ -17,6 +17,7 @@ import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../
 import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
 import { Icon } from '../../shared/icons';
 import { AppIcon, MailaenderLogo } from '../../shared/logos';
+import { BereichWechsel } from '../../shell/BereichWechsel';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
@@ -52,6 +53,7 @@ export function App() {
   return (
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
+        <BereichWechsel />
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
           <AppIcon size={38} />
           <div className="sidebar-brand-text">
