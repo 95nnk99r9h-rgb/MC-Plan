@@ -864,14 +864,19 @@ a:hover { text-decoration: underline; }
   border: none;
   background: var(--bg-elev);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  /* Eine Haarlinie als Rand: der obere Bildteil liegt farblich dicht am
+     Seitenhintergrund und verliefe sonst mit ihm. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--separator-strong);
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.bereich-kachel:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.bereich-kachel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--separator-strong);
+}
 .bereich-kachel:active { transform: translateY(0); }
 
 /* Oberer Bildteil mit dem Piktogramm des Bereichs */
