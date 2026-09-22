@@ -201,7 +201,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                       </td>
                       <td>
                         <span className="row" style={{ gap: 8 }}>
-                          <Progress wert={pct} ton={spaet ? 'red' : pct === 100 ? 'green' : ''} />
+                          <Progress wert={pct} />
                           <span className="small tertiary">{pct}%</span>
                         </span>
                       </td>

@@ -442,7 +442,7 @@ export function PlanlaufListe({
             </td>
             <td className="col-optional">
               <span className="row" style={{ gap: 8 }}>
-                <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : ''} />
+                <Progress wert={pct} />
                 <span className="small tertiary">{pct}%</span>
               </span>
             </td>

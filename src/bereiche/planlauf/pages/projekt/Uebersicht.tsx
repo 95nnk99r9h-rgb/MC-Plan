@@ -131,7 +131,7 @@ export function Uebersicht({
             Gesamtfortschritt der Planläufe
           </span>
           <span style={{ flex: 1 }}>
-            <Progress wert={gesamt} ton={gesamt === 100 ? 'green' : ''} />
+            <Progress wert={gesamt} />
           </span>
           <b className="small" style={{ flex: 'none', minWidth: 38, textAlign: 'right' }}>{gesamt}%</b>
         </div>
