@@ -6,7 +6,7 @@
  * den Soll-Termin des Eingangs. Der Stand der Planläufe steht in der
  * Projektübersicht, Planpakete werden auf einer eigenen Seite gepflegt.
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   aktuellerSchritt,
   gewerkeFuerProjekt,
@@ -64,6 +64,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const [absteigend, setAbsteigend] = useState(false);
   const [dialog, setDialog] = useState<{ doc?: PlanDocument } | null>(null);
   const [importOffen, setImportOffen] = useState(false);
+  /** Zugeklappte Planverzeichnisse – in der Planliste sind sie zunächst offen. */
+  const [zugeklappt, setZugeklappt] = useState<string[]>([]);
   // Planpakete werden auf einer eigenen Seite gepflegt
   const alle = data.documents.filter((d) => d.projectId === project.id && d.kind !== 'paket');
   const pakete = data.documents.filter((d) => d.projectId === project.id && d.kind === 'paket');
@@ -112,6 +114,18 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const zeilen = [...gefiltert].sort(
     (a, b) => schluessel(a).localeCompare(schluessel(b), 'de', { numeric: true }) * (absteigend ? -1 : 1),
   );
+
+  /**
+   * Pläne eines Planverzeichnisses stehen eingerückt unter ihm und lassen sich
+   * am Dreieck zuklappen. Ist das Verzeichnis selbst ausgefiltert, steht der
+   * Plan wie bisher für sich in der Liste.
+   */
+  const kinderVon = (id: string) => zeilen.filter((d) => d.kind === 'plan' && d.parentId === id);
+  const obereEbene = zeilen.filter(
+    (d) => !(d.kind === 'plan' && d.parentId && zeilen.some((x) => x.id === d.parentId)),
+  );
+  const klappen = (id: string) =>
+    setZugeklappt((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
   const sortieren = (feld: SortFeld) => {
     if (feld === sortFeld) setAbsteigend((a) => !a);
@@ -190,6 +204,100 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     return null;
   };
 
+  /** Eine Zeile der Planliste; Pläne eines Verzeichnisses stehen eingerückt. */
+  const zeile = (doc: PlanDocument, eingerueckt = false) => {
+    const kinder = doc.kind === 'verzeichnis' ? kinderVon(doc.id) : [];
+    const offen = !zugeklappt.includes(doc.id);
+    return (
+      <tr
+        key={doc.id}
+        className={`clickable ${eingerueckt ? 'unterzeile' : ''} ${
+          abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
+        }`}
+        onClick={() => setDialog({ doc })}
+        title={
+          abgeschlossen(doc)
+            ? 'Planlauf abgeschlossen'
+            : wartetAufEingang(doc)
+              ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
+              : undefined
+        }
+      >
+        <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
+        <td className="small">
+          <span className="row" style={{ gap: 8 }}>
+            <DocKindIcon kind={doc.kind} />
+            {DOCUMENT_KIND_LABEL[doc.kind]}
+          </span>
+        </td>
+        <td style={{ paddingLeft: eingerueckt ? 30 : undefined }}>
+          <span className="row" style={{ gap: 7, alignItems: 'flex-start' }}>
+            {kinder.length > 0 ? (
+              <button
+                type="button"
+                className={`chev-btn ${offen ? 'offen' : ''}`}
+                title={offen ? 'Pläne ausblenden' : 'Pläne anzeigen'}
+                aria-label="Pläne des Verzeichnisses anzeigen"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  klappen(doc.id);
+                }}
+              >
+                <Icon name="chevron" size={13} />
+              </button>
+            ) : null}
+            <span style={{ minWidth: 0 }}>
+              <span className="num">
+                {doc.nummer}
+                {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
+              </span>
+              <div>
+                <strong>{doc.titel}</strong>
+                {kinder.length > 0 ? (
+                  <span className="small tertiary">
+                    {' '}
+                    · {kinder.length} {kinder.length === 1 ? 'Plan' : 'Pläne'}
+                  </span>
+                ) : null}
+                {wartetAufEingang(doc) ? (
+                  <span className="badge gelb" style={{ marginLeft: 6 }} title={`„${SCHRITT_EINGANG}“ steht noch aus`}>
+                    Angekündigt
+                  </span>
+                ) : null}
+                {(() => {
+                  const zusatz = abbruchZusatz(doc);
+                  return zusatz ? (
+                    <span className="badge zusatz" title={zusatz.titel}>
+                      {zusatz.text}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </span>
+          </span>
+        </td>
+        <td className="small muted">{doc.gewerk || '–'}</td>
+        <td className="small muted col-optional">{verzeichnisName(doc) || '–'}</td>
+        <td className="small muted col-optional">{paketName(doc) || '–'}</td>
+        <td className="small">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
+        <td className="actions">
+          <button
+            type="button"
+            className="btn-icon"
+            aria-label="Eintrag bearbeiten"
+            title="Stammdaten bearbeiten"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDialog({ doc });
+            }}
+          >
+            <Icon name="bearbeiten" size={15} />
+          </button>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="stack">
       <div className="row-between wrap">
@@ -249,69 +357,13 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 </tr>
               </thead>
               <tbody>
-                {zeilen.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className={`clickable ${
-                      abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
-                    }`}
-                    onClick={() => setDialog({ doc })}
-                    title={
-                      abgeschlossen(doc)
-                        ? 'Planlauf abgeschlossen'
-                        : wartetAufEingang(doc)
-                          ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
-                          : undefined
-                    }
-                  >
-                    <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
-                    <td className="small">
-                      <span className="row" style={{ gap: 8 }}>
-                        <DocKindIcon kind={doc.kind} />
-                        {DOCUMENT_KIND_LABEL[doc.kind]}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="num">
-                        {doc.nummer}
-                        {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
-                      </span>
-                      <div>
-                        <strong>{doc.titel}</strong>
-                        {wartetAufEingang(doc) ? (
-                          <span className="badge gelb" style={{ marginLeft: 6 }} title={`„${SCHRITT_EINGANG}“ steht noch aus`}>
-                            Angekündigt
-                          </span>
-                        ) : null}
-                        {(() => {
-                          const zusatz = abbruchZusatz(doc);
-                          return zusatz ? (
-                            <span className="badge zusatz" title={zusatz.titel}>
-                              {zusatz.text}
-                            </span>
-                          ) : null;
-                        })()}
-                      </div>
-                    </td>
-                    <td className="small muted">{doc.gewerk || '–'}</td>
-                    <td className="small muted col-optional">{verzeichnisName(doc) || '–'}</td>
-                    <td className="small muted col-optional">{paketName(doc) || '–'}</td>
-                    <td className="small">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
-                    <td className="actions">
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        aria-label="Eintrag bearbeiten"
-                        title="Stammdaten bearbeiten"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDialog({ doc });
-                        }}
-                      >
-                        <Icon name="bearbeiten" size={15} />
-                      </button>
-                    </td>
-                  </tr>
+                {obereEbene.map((doc) => (
+                  <Fragment key={doc.id}>
+                    {zeile(doc)}
+                    {doc.kind === 'verzeichnis' && !zugeklappt.includes(doc.id)
+                      ? kinderVon(doc.id).map((plan) => zeile(plan, true))
+                      : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

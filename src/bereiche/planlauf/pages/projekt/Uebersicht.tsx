@@ -33,10 +33,9 @@ export function Uebersicht({
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
-  // Gliederung der Planlaufliste: Pakete allein oder mit ihren Einträgen;
-  // Pläne, die im Lauf ihres Verzeichnisses mitlaufen, sind zunächst aus.
+  // Gliederung der Planlaufliste: Pakete allein oder mit ihren Einträgen.
+  // Pläne eines Planverzeichnisses hängen am Dreieck der Verzeichniszeile.
   const [ebene, setEbene] = useState<'1' | '2'>('2');
-  const [unterplaene, setUnterplaene] = useState(false);
   // Filter der Planlaufliste
   const [suche, setSuche] = useState('');
   const [gewerkFilter, setGewerkFilter] = useState('');
@@ -50,13 +49,16 @@ export function Uebersicht({
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
   const abgeschlossen = laeufe.filter((r) => r.status === 'abgeschlossen');
 
-  // Wie in der Planliste: je Eintrag der maßgebliche Lauf – der laufende,
-  // sonst der abgeschlossene, sonst der abgebrochene.
-  const rang = (r: (typeof laeufe)[number]) =>
-    r.status === 'laufend' ? 0 : r.status === 'abgeschlossen' ? 1 : 2;
-  const massgeblich = [...laeufe]
+  // Je Eintrag der maßgebliche Lauf – der laufende, sonst der abgeschlossene.
+  // Abgebrochene Läufe kommen vollständig dazu: auch der Vorgänger eines neuen
+  // Index bleibt so sichtbar und steht in der Liste gesammelt am Ende.
+  const rang = (r: (typeof laeufe)[number]) => (r.status === 'laufend' ? 0 : 1);
+  const verworfen = laeufe.filter((r) => r.status === 'abgebrochen');
+  const aktuell = laeufe
+    .filter((r) => r.status !== 'abgebrochen')
     .sort((a, b) => rang(a) - rang(b))
     .filter((r, i, alle) => alle.findIndex((x) => x.documentId === r.documentId) === i);
+  const massgeblich = [...aktuell, ...verworfen];
   /**
    * Status eines Laufs als Filterwert – laufende nach ihrer Ampel, solange der
    * Eingang beim Planlaufmanagement aussteht dagegen „angekündigt“.
@@ -64,8 +66,11 @@ export function Uebersicht({
   const statusVon = (r: (typeof laeufe)[number]) => {
     if (r.status !== 'laufend') return r.status;
     const step = aktuellerSchritt(r);
+    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
+    // Ein überfälliger Eingang zählt als überfällig, nicht als angekündigt.
+    if (ampel === 'ueberfaellig') return ampel;
     if (step && istEingangPLM(step.name)) return 'angekuendigt';
-    return step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
+    return ampel;
   };
 
   const gefiltert = massgeblich.filter((r) => {
@@ -156,14 +161,6 @@ export function Uebersicht({
                   { value: '2', label: '+ Pläne & Verzeichnisse' },
                 ]}
               />
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={unterplaene}
-                  onChange={(e) => setUnterplaene(e.target.checked)}
-                />
-                Untergeordnete Pläne anzeigen
-              </label>
               {filterAktiv ? (
                 <button type="button" className="btn btn-sm btn-ghost" onClick={filterLoeschen}>
                   Filter zurücksetzen
@@ -208,7 +205,6 @@ export function Uebersicht({
             }}
             alleRuns={laeufe}
             ebene={Number(ebene) as 1 | 2}
-            unterplaene={unterplaene}
             oeffneLauf={oeffneLauf}
           />
         )}

@@ -63,7 +63,6 @@ export function PlanlaufListe({
   runs,
   alleRuns,
   ebene = 2,
-  unterplaene = true,
   spaltenFilter,
   oeffneLauf,
 }: {
@@ -77,11 +76,6 @@ export function PlanlaufListe({
    * Planverzeichnissen.
    */
   ebene?: 1 | 2;
-  /**
-   * Zeigt unter jedem Planverzeichnis die Pläne, die darin mitlaufen.
-   * Ist sie abgeschaltet, bleiben diese Pläne ausgeblendet.
-   */
-  unterplaene?: boolean;
   /** Auswahl je Spalte; ohne Angabe bleibt die Überschrift ohne Filter. */
   spaltenFilter?: SpaltenFilter;
   oeffneLauf: (runId: string) => void;
@@ -89,8 +83,12 @@ export function PlanlaufListe({
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
-  /** Zeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
+  /** Paketzeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
   const [abweichend, setAbweichend] = useState<string[]>([]);
+  /** Aufgeklappte Planverzeichnisse – zunächst sind alle zugeklappt. */
+  const [offeneVerzeichnisse, setOffeneVerzeichnisse] = useState<string[]>([]);
+  /** Die abgebrochenen Läufe am Ende der Liste sind zunächst zugeklappt. */
+  const [verworfeneOffen, setVerworfeneOffen] = useState(false);
   /** Sortierung; ohne Angabe gilt die vorgegebene Reihenfolge. */
   const [sortFeld, setSortFeld] = useState<SortFeld | null>(null);
   const [absteigend, setAbsteigend] = useState(false);
@@ -99,12 +97,13 @@ export function PlanlaufListe({
    * Karte und Tabelle ihren Inhalt beschneiden.
    */
   const [filterOffen, setFilterOffen] = useState<{ feld: FilterFeld; x: number; y: number } | null>(null);
-  const [zuletzt, setZuletzt] = useState(`${ebene}-${unterplaene}`);
+  const [zuletzt, setZuletzt] = useState(String(ebene));
 
   // Beim Umschalten der Gliederung gilt wieder die einheitliche Darstellung.
-  if (zuletzt !== `${ebene}-${unterplaene}`) {
-    setZuletzt(`${ebene}-${unterplaene}`);
+  if (zuletzt !== String(ebene)) {
+    setZuletzt(String(ebene));
     setAbweichend([]);
+    setOffeneVerzeichnisse([]);
   }
 
   /** Paketzeilen folgen der Ebene, einzelne Abweichungen stechen. */
@@ -125,14 +124,22 @@ export function PlanlaufListe({
     return doc.paketId;
   };
 
+  // Abgebrochene Läufe – ersatzlos wie ersetzt – stehen gesammelt am Ende der
+  // Liste und nicht mehr zwischen den laufenden Einträgen ihres Pakets.
+  const verworfene = eintraege.filter((e) => e.run.status === 'abgebrochen');
+  const laufende = eintraege.filter((e) => e.run.status !== 'abgebrochen');
+
   // Einträge eines Planpakets stehen unter ihrer Paketzeile
   const pakete = data.documents.filter(
-    (d) => d.kind === 'paket' && eintraege.some((e) => paketVon(e.doc) === d.id),
+    (d) => d.kind === 'paket' && laufende.some((e) => paketVon(e.doc) === d.id),
   );
-  const ohnePaket = eintraege.filter((e) => !pakete.some((p) => p.id === paketVon(e.doc)));
+  const ohnePaket = laufende.filter((e) => !pakete.some((p) => p.id === paketVon(e.doc)));
 
   const klappen = (id: string) =>
     setAbweichend((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+
+  const verzeichnisKlappen = (id: string) =>
+    setOffeneVerzeichnisse((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
   /**
    * Stand eines Planpakets: Planpakete laufen selbst nicht, ihr Fortschritt
@@ -191,8 +198,11 @@ export function PlanlaufListe({
         return fortschritt(e.run);
       case 'status': {
         if (e.run.status !== 'laufend') return STATUS_RANG[e.run.status];
-        if (e.step && istEingangPLM(e.step.name)) return STATUS_RANG.angekuendigt;
         const ampel = e.step ? ampelFuerSchritt(e.step, project.settings.erinnerungVorlaufTage) : 'neutral';
+        // Ein angekündigter Eintrag, dessen Eingang überfällig ist, zählt als
+        // überfällig – sonst verschwände die Dringlichkeit hinter „angekündigt“.
+        if (ampel === 'ueberfaellig') return STATUS_RANG.ueberfaellig;
+        if (e.step && istEingangPLM(e.step.name)) return STATUS_RANG.angekuendigt;
         return STATUS_RANG[ampel] ?? 9;
       }
       default:
@@ -355,11 +365,11 @@ export function PlanlaufListe({
     // Pläne eines Planverzeichnisses laufen in dessen Lauf mit; sie lassen
     // sich unter dem Verzeichnis aufklappen.
     const plaene =
-      unterplaene && doc?.kind === 'verzeichnis'
-        ? data.documents.filter((d) => d.parentId === doc.id)
-        : [];
-    // Die Pläne eines Verzeichnisses hängen an der eigenen Schaltfläche
-    const aufgeklappt = doc ? !abweichend.includes(doc.id) : false;
+      doc?.kind === 'verzeichnis' ? data.documents.filter((d) => d.parentId === doc.id) : [];
+    // Die Pläne eines Verzeichnisses hängen an der eigenen Schaltfläche und
+    // sind zunächst zugeklappt.
+    const aufgeklappt = doc ? offeneVerzeichnisse.includes(doc.id) : false;
+    const anzeigeIndex = abgebrochen ? run.index || doc?.index : doc?.index;
     const einzug = eingerueckt ? 46 : 14;
     return (
       <Fragment key={run.id}>
@@ -386,7 +396,7 @@ export function PlanlaufListe({
                 aria-label="Pläne des Verzeichnisses anzeigen"
                 onClick={(e) => {
                   e.stopPropagation();
-                  klappen(doc!.id);
+                  verzeichnisKlappen(doc!.id);
                 }}
               >
                 <Icon name="chevron" size={13} />
@@ -396,7 +406,9 @@ export function PlanlaufListe({
             <span style={{ minWidth: 0 }}>
               <span className="num">
                 {doc?.nummer}
-                {doc?.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
+                {/* Ein abgebrochener Lauf trägt seinen eigenen Index – der
+                    Eintrag selbst steht längst auf dem Nachfolgeindex. */}
+                {anzeigeIndex && doc ? ` · ${INDEX_LABEL[doc.kind]} ${anzeigeIndex}` : ''}
               </span>
               <div>
                 <strong>{doc?.titel ?? run.name}</strong>
@@ -451,9 +463,11 @@ export function PlanlaufListe({
         <td>
           {run.status !== 'laufend' ? (
             <RunStatusBadge status={run.status} />
-          ) : wartetAufEingang ? (
+          ) : wartetAufEingang && ampel !== 'ueberfaellig' ? (
             <AngekuendigtBadge />
           ) : (
+            // Ist der Eingang überfällig, zählt die Frist – die Bezeichnung
+            // der Zeile bleibt gelb und weist den Eintrag als angekündigt aus.
             <AmpelBadge ampel={ampel} />
           )}
         </td>
@@ -534,7 +548,7 @@ export function PlanlaufListe({
           </thead>
           <tbody>
             {paketeSortiert.map((paket) => {
-              const inhalt = sortieren(eintraege.filter((e) => paketVon(e.doc) === paket.id));
+              const inhalt = sortieren(laufende.filter((e) => paketVon(e.doc) === paket.id));
               const aufgeklappt = istOffen(paket.id);
               const stand = paketStand(paket.id);
               return (
@@ -604,6 +618,28 @@ export function PlanlaufListe({
             {pakete.length === 0 || istOffen('ohne-paket')
               ? sortieren(ohnePaket).map((e) => zeile(e, pakete.length > 0))
               : null}
+
+            {verworfene.length > 0 ? (
+              <tr className="paket-zeile ohne-paket">
+                <td colSpan={7}>
+                  <button
+                    type="button"
+                    className={`gruppe-btn ${verworfeneOffen ? 'offen' : ''}`}
+                    onClick={() => setVerworfeneOffen((o) => !o)}
+                    title={verworfeneOffen ? 'Abgebrochene ausblenden' : 'Abgebrochene anzeigen'}
+                  >
+                    <span className="chev">
+                      <Icon name="chevron" size={13} />
+                    </span>
+                    <span className="small muted">
+                      Abgebrochen · {verworfene.length}{' '}
+                      {verworfene.length === 1 ? 'Planlauf' : 'Planläufe'}
+                    </span>
+                  </button>
+                </td>
+              </tr>
+            ) : null}
+            {verworfeneOffen ? sortieren(verworfene).map((e) => zeile(e, pakete.length > 0)) : null}
           </tbody>
         </table>
       </div>
