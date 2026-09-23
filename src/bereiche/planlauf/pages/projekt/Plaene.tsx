@@ -230,12 +230,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             {DOCUMENT_KIND_LABEL[doc.kind]}
           </span>
         </td>
-        <td style={{ paddingLeft: eingerueckt ? 30 : undefined }}>
-          <span className="row" style={{ gap: 7, alignItems: 'flex-start' }}>
+        <td style={{ paddingLeft: eingerueckt ? 60 : 36 }}>
+          <span className="row" style={{ gap: 9, alignItems: 'flex-start' }}>
             {kinder.length > 0 ? (
               <button
                 type="button"
-                className={`chev-btn ${offen ? 'offen' : ''}`}
+                className={`chev-btn chev-vorn ${offen ? 'offen' : ''}`}
                 title={offen ? 'Pläne ausblenden' : 'Pläne anzeigen'}
                 aria-label="Pläne des Verzeichnisses anzeigen"
                 onClick={(e) => {

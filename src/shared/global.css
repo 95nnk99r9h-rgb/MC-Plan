@@ -670,6 +670,13 @@ a:hover { text-decoration: underline; }
 .chev-btn { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex: 0 0 20px; padding: 0; margin: 0; border: none; border-radius: 6px; background: none; color: var(--text-tertiary); cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
 .chev-btn:hover { background: rgba(0, 0, 0, 0.05); color: var(--text-primary); }
 .chev-btn.offen { transform: rotate(90deg); }
+/*
+ * Der Pfeil zum Aufklappen liegt links vor Symbol und Titel, damit
+ * Planverzeichnisse und Pläne auf derselben Höhe beginnen. 20 px Schaltfläche
+ * und 9 px Abstand ergeben die 29 px, um die er vorgezogen wird.
+ */
+.chev-vorn { margin-left: -29px; }
+.chev-vorn.offen { transform: rotate(90deg); }
 .table tr.unterzeile td { background: rgba(0, 0, 0, 0.015); }
 /* Verworfene Fassungen (abgebrochener Lauf) bleiben grau sichtbar */
 /*

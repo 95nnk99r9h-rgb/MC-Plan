@@ -370,7 +370,9 @@ export function PlanlaufListe({
     // sind zunächst zugeklappt.
     const aufgeklappt = doc ? offeneVerzeichnisse.includes(doc.id) : false;
     const anzeigeIndex = abgebrochen ? run.index || doc?.index : doc?.index;
-    const einzug = eingerueckt ? 46 : 14;
+    // Position von Symbol und Titel; der Pfeil liegt 29 px davor und braucht
+    // darum auch ohne Planpakete etwas Vorlauf.
+    const einzug = eingerueckt ? 46 : 36;
     return (
       <Fragment key={run.id}>
       <tr
@@ -391,7 +393,7 @@ export function PlanlaufListe({
             {plaene.length > 0 ? (
               <button
                 type="button"
-                className={`chev-btn ${aufgeklappt ? 'offen' : ''}`}
+                className={`chev-btn chev-vorn ${aufgeklappt ? 'offen' : ''}`}
                 title={aufgeklappt ? 'Pläne ausblenden' : 'Pläne anzeigen'}
                 aria-label="Pläne des Verzeichnisses anzeigen"
                 onClick={(e) => {
@@ -495,7 +497,7 @@ export function PlanlaufListe({
       {aufgeklappt
         ? plaene.map((plan) => (
             <tr key={plan.id} className="unterzeile">
-              <td style={{ paddingLeft: einzug + 32 }}>
+              <td style={{ paddingLeft: einzug + 28 }}>
                 <span className="row" style={{ gap: 9 }}>
                   <DocKindIcon kind={plan.kind} />
                   <span style={{ minWidth: 0 }}>
