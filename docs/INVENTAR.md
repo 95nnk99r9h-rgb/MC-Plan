@@ -1,7 +1,7 @@
 # Inventar der Anwendung
 
 Stand: Analyse des Quellcodes in diesem Repository (Zweig
-`claude/planlauf-management-app-5jn9sa`). Es sind ausschließlich Sachverhalte
+`claude/vibrant-bohr-t9sxtj`). Es sind ausschließlich Sachverhalte
 aufgeführt, die sich im Code belegen lassen; Dateipfade verweisen auf die
 jeweilige Fundstelle.
 
@@ -14,7 +14,14 @@ Inventar beschreibt das Planlaufmanagement.
 Der Bereich verwaltet die Planläufe von Bauprojekten: Zu
 jedem Plan bzw. Planverzeichnis wird ein Workflow (Prozesskette) gestartet,
 dessen Schritte Soll-Termine, eine zuständige Funktion und eine Person tragen
-(`src/bereiche/planlauf/domain/engine.ts`, `src/bereiche/planlauf/domain/types.ts`). Die Anwendung rechnet aus den
+(`src/bereiche/planlauf/domain/engine.ts`, `src/bereiche/planlauf/domain/types.ts`).
+Ein Planverzeichnis durchläuft den Planlauf entweder **gebündelt** – das
+Verzeichnis hat den Lauf, seine Pläne laufen mit – oder mit **Plänen einzeln**,
+dann hat jeder Plan einen eigenen Lauf und das Verzeichnis ordnet nur
+(`planlaufModus`; ohne Angabe gilt gebündelt). Einzelne Pläne eines
+gebündelten Verzeichnisses lassen sich nachträglich herauslösen
+(`eigenerLauf`). Welcher Eintrag einen eigenen Lauf hat, entscheidet allein
+`hatEigenenPlanlauf` in `types.ts`. Die Anwendung rechnet aus den
 Fristen je Schritt die Soll-Termine, überwacht sie mit einer Ampel (im Plan /
 fällig / überfällig) und bereitet Erinnerungen als E-Mail für Outlook vor
 (`ampelFuerSchritt`, `src/bereiche/planlauf/components/EmailDialog.tsx`). Sie läuft vollständig im
@@ -25,7 +32,9 @@ angesprochen (`src/bereiche/planlauf/store/storage.ts`).
 
 Die Anwendung besteht aus zwei getrennten Bereichen. Die erste Wegmarke der
 Adresse benennt den Bereich; die Shell (`src/shell/router.ts`) wählt danach
-aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl,
+aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
+(`src/shell/Start.tsx`: zwei hochkante Kacheln, links Planlaufmanagement,
+rechts Baubetriebsplanung mit dem Kennzeichen „In Vorbereitung“),
 `#/planlauf/…` das Planlaufmanagement, `#/baubetrieb` die noch leere
 Baubetriebsplanung. Innerhalb des Bereichs adressiert ein Hash-Router ohne
 Bibliothek (`src/bereiche/planlauf/lib/router.ts`); unbekannte Adressen führen
@@ -40,7 +49,7 @@ und bleiben damit als Lesezeichen gültig.
 | `#/planlauf` bzw. `#/planlauf/dashboard` | Übersicht (`src/bereiche/planlauf/pages/Dashboard.tsx`) | Vier Kacheln: Laufende Planläufe, To-Dos (Planlaufmanagement), Überfällige Schritte, Demnächst fällig – die beiden letzten führen per Klick auf `#/planlauf/fristen`. Tabelle „Meine To-Dos“ mit Schritt, Gewerk, Projekt, Soll-Termin, Status, Erinnerungs-Mail und Erledigt-Haken. Tabelle „Projekte“ mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, demnächst fällig, überfällig, Fortschrittsbalken und „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle (`sichtbareProjekte`). |
 | `#/planlauf/fristen` | Fristen & Erinnerungen (`src/bereiche/planlauf/pages/Fristen.tsx`) | Alle offenen Schritte über alle Projekte, gegliedert nach Projekt. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht. |
 | `#/planlauf/projekte` | Projekte (`src/bereiche/planlauf/pages/Projekte.tsx`) | Projektliste mit Suche über Name, Nummer und Beschreibung; Projekt anlegen (übernimmt alle projektübergreifenden Funktionen als Projektfunktionen), bearbeiten, mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. |
-| `#/planlauf/ketten` | Workflows (`src/bereiche/planlauf/pages/Workflows.tsx`) | Standard-Workflows und projektspezifische Ketten: neue Kette anlegen, Kette bearbeiten, duplizieren (wird zur manuellen Kette), löschen. Je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung / Sonstiges), Verantwortlicher, Frist in Tagen, Nachweis bei Abschluss, „Weiter mit“, Antworten einer Entscheidung und die Option „E-Mail nach Abschluss“ samt Vorlage. |
+| `#/planlauf/ketten` | Workflows (`src/bereiche/planlauf/pages/Workflows.tsx`) | Standard-Workflows und projektspezifische Ketten: neue Kette anlegen, Kette bearbeiten, duplizieren (wird zur manuellen Kette), löschen. Je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung / Sonstiges), Verantwortlicher (Vorschlagsliste der Funktionen, je Bezeichnung einmal), Frist in Tagen, Nachweis bei Abschluss, „Weiter mit“, Antworten einer Entscheidung und die Option „E-Mail nach Abschluss“ samt Vorlage. „Weiter mit“ und die Antwortziele nennen die Nummer des Zielschritts im Workflow (`ziele` in `SchrittListe`). |
 | `#/planlauf/rollen` | Funktionen (`src/bereiche/planlauf/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk. Neue Funktion anlegen (Bezeichnung, Kürzel, Farbe, Gewerk, Beschreibung), vorhandene Funktion eines anderen Gewerks übernehmen, bearbeiten, löschen. Über das **+** an den Reitern entsteht ein Gewerk, über „Gewerk … löschen“ am Seitenende entfällt es. |
 | `#/planlauf/vorlagen` | Vorlagen (`src/bereiche/planlauf/pages/Vorlagen.tsx`) | Reiter **E-Mail-Texte**: Vorlagen anlegen, bearbeiten, löschen; Editor mit Bausteinen aus `PLATZHALTER` (`src/bereiche/planlauf/domain/email.ts`) und Vorschau mit Beispielwerten; Anlass je Vorlage (Erinnerung, Mahnung, Freigabe, Übergabe, Allgemein). Reiter **Excel-Vorlagen**: Vorlagen „Planliste“ und „Rollen & Funktionen“ als `.xlsx` herunterladen, mit Spaltenerläuterung. |
 | `#/planlauf/projekt/<id>/<reiter>` | Projektarbeitsbereich (`src/bereiche/planlauf/pages/ProjektDetail.tsx`) | Reiter siehe 2.2. Frühere Adressen werden umgeleitet: `planlaeufe` → `plaene`, `adressbuch` → `rollen`. |
@@ -50,8 +59,8 @@ und bleiben damit als Lesezeichen gültig.
 
 | Reiter | Seite | Aktionen |
 | --- | --- | --- |
-| `uebersicht` | Projektübersicht (`src/bereiche/planlauf/pages/projekt/Uebersicht.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen, je Eintrag mit dem offenen Schritt in der Spalte „Nächster Schritt“: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Schalter „Untergeordnete Pläne anzeigen“, einzelne Pakete und Verzeichnisse auf- und zuklappen, Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status – einschließlich „Angekündigt“), Sortierung je Spalte, Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen. Die Bezeichnung steht gelb, solange „Eingang PLM“ aussteht – diese Läufe tragen den Status „Angekündigt“ und lassen sich danach filtern und sortieren –, und grün, wenn der Lauf abgeschlossen ist. Abgebrochene Läufe stehen ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. |
-| `plaene` | Planliste (`src/bereiche/planlauf/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis, Planpaket und Eingang Soll. Filter (Alle / Pläne / Verzeichnisse), Suche, Sortierung je Spalte. Einträge, deren Planlauf noch beim Schritt „Eingang PLM“ steht, tragen eine gelbe Bezeichnung und das Kennzeichen „Angekündigt“; bei abgeschlossenen Läufen steht die Bezeichnung grün. Eintrag anlegen (startet zugleich den Planlauf), bearbeiten, löschen; Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen; Excel-Import (`PlaeneImport.tsx`). Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz. |
+| `uebersicht` | Projektübersicht (`src/bereiche/planlauf/pages/projekt/Uebersicht.tsx`, Liste in `src/bereiche/planlauf/components/PlanlaufListe.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen, je Eintrag mit dem offenen Schritt in der Spalte „Nächster Schritt“: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Pakete und Planverzeichnisse am Pfeil auf- und zuklappen (Verzeichnisse zunächst zugeklappt; der Pfeil steht vor Symbol und Titel, sodass Pläne und Verzeichnisse auf einer Linie beginnen), Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status – einschließlich „Angekündigt“), Sortierung je Spalte, Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen. Die Bezeichnung steht gelb, solange „Eingang PLM“ aussteht – diese Läufe tragen den Status „Angekündigt“, ist der Eingang überfällig jedoch „Überfällig“; Filter und Sortierung folgen derselben Regel –, und grün, wenn der Lauf abgeschlossen ist. Unter einem gebündelten Verzeichnis stehen seine Pläne mit „läuft im Planlauf des Verzeichnisses mit“, herausgelöste Pläne dagegen mit ihrem eigenen Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als Zeile „… · Pläne einzeln“ ohne eigenen Lauf, mit der Zahl seiner laufenden Pläne und dem aus ihnen zusammengefassten Fortschritt und Status (wie ein Planpaket); seine Pläne stehen darunter. Abgebrochene Läufe – ersatzlos wie durch neuen Index ersetzt – stehen gesammelt am Ende unter der zunächst zugeklappten Zeile „Abgebrochen · … Planläufe“, ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit dem Index des abgebrochenen Laufs, „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. Ein in Einzelläufe aufgeteilter Verzeichnislauf erscheint dort nicht. Fortschrittsbalken stehen immer in der Hausfarbe. |
+| `plaene` | Planliste (`src/bereiche/planlauf/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis, Planpaket und Eingang Soll. Pläne eines Planverzeichnisses stehen unter ihm, mit Symbol, Art und Titel eingerückt; der Pfeil zum Auf- und Zuklappen steht zwischen Nummer und Symbol (zunächst aufgeklappt). Ist das Verzeichnis ausgefiltert, stehen seine Pläne für sich. Filter (Alle / Pläne / Verzeichnisse), Suche, Sortierung je Spalte. Einträge, deren Planlauf noch beim Schritt „Eingang PLM“ steht, tragen eine gelbe Bezeichnung und das Kennzeichen „Angekündigt“; bei abgeschlossenen Läufen steht die Bezeichnung grün. Kennzeichen „Pläne einzeln“ an Verzeichnissen mit Einzelläufen, „eigener Lauf“ an herausgelösten Plänen eines gebündelten Verzeichnisses. Eintrag anlegen (startet zugleich den Planlauf, sofern der Eintrag einen eigenen hat), bearbeiten, löschen; Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen; Excel-Import (`PlaeneImport.tsx`). Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz; ein aufgeteilter Verzeichnislauf zählt nicht als Abbruch. Im Dialog eines Planverzeichnisses: Haken „Pläne einzeln durch den Planlauf führen“ – frei wählbar, solange weder das Verzeichnis noch seine Pläne einen Lauf haben – und bei laufendem gebündeltem Lauf „Alle Pläne einzeln weiterführen …“ (`verzeichnisAufteilen`). Im Dialog eines mitlaufenden Plans: „Aus dem Verzeichnislauf herauslösen …“ (`planHerausloesen`). In beiden Fällen übernimmt der Plan den Stand des Verzeichnislaufs – erledigte Schritte bleiben erledigt, Start und Termine laufen weiter (`laufUebernehmen` in `engine.ts`); der gebündelte Lauf endet beim Aufteilen mit der Abbruchart `aufgeteilt`. Ein Plan, der schon einen eigenen Lauf hat, behält ihn beim Verschieben in ein anderes Verzeichnis. |
 | `pakete` | Planpakete (`src/bereiche/planlauf/pages/projekt/Planpakete.tsx`) | Planpakete anlegen, bearbeiten, löschen; Inhalt aufklappen, Pläne und Planverzeichnisse zuordnen und wieder entfernen. Reines Ordnungsmerkmal ohne Einfluss auf Planläufe. |
 | `rollen` | Rollen & Funktionen (`src/bereiche/planlauf/pages/projekt/RollenFunktionen.tsx`) | Nach Gewerken gegliedert („Übergreifend“ + je Gewerk, **+** für ein weiteres Gewerk, „Gewerk … löschen“ am Seitenende). Je Funktion die Besetzung mit einer Person samt Adressdaten: Funktion anlegen, bearbeiten, löschen; Besetzung setzen, wechseln, aufheben – von der Funktion aus (Person übernehmen oder neu erfassen) oder über „Person hinzufügen“ von der Person aus (Funktion optional gleich mitwählen). Suche über Funktion, Person und Firma; Personen ohne Funktion in einer eigenen Liste; Excel-Import (`RollenImport.tsx`), der fehlende Gewerke und Funktionen anlegt. |
 | `ketten` | Workflows im Projekt (`src/bereiche/planlauf/pages/Workflows.tsx` mit `projectId`) | Wie der globale Bereich, zusätzlich mit den Projektvarianten dieses Projekts. |
@@ -64,7 +73,10 @@ Fortschritt, Verlaufskette und Schrittliste. Aktionen am jeweils anstehenden
 Schritt: **Erledigt**, **Überspringen**, **Erinnern** (E-Mail vorbereiten);
 abgeschlossene Schritte bieten **Wieder öffnen**, jede Zeile **Anpassen**
 (Bezeichnung, Art, Funktion, zuständige Person, Frist, Soll-Termin, Status,
-Bemerkung, Nachweis). Weiter: **Schritt einfügen**, Antwort einer Entscheidung
+Bemerkung, Nachweis). Zur Wahl der Funktion stehen die Funktionen des Gewerks
+des Eintrags und die übergreifenden, je Bezeichnung einmal
+(`funktionenFuerGewerk` in `engine.ts`); eine bereits gesetzte Funktion bleibt
+wählbar. Weiter: **Schritt einfügen**, Antwort einer Entscheidung
 wählen, **Planlauf abbrechen** (ersatzlos oder mit neuem Index bzw. neuer
 Ausgabe – dann startet ein Nachfolgelauf) und **Lauf löschen**. Ein
 abgebrochener Lauf ist schreibgeschützt: `beendet = run.status !== 'laufend'`
@@ -76,7 +88,9 @@ abgefragt (`src/bereiche/planlauf/components/SchrittStatus.tsx`).
 
 * **Seitenleiste** (`src/bereiche/planlauf/App.tsx`): Navigation (Übersicht, Projekte, Workflows,
   Funktionen, Vorlagen), darunter die markierten Projekte mit vorangestellter
-  Projektnummer und der Anzahl überfälliger Schritte.
+  Projektnummer und der Anzahl überfälliger Schritte. Ganz unten
+  **Bereich wechseln** zurück zur Bereichsauswahl
+  (`src/shell/BereichWechsel.tsx`).
 * **Angemeldet als** (unten links): Name (Vorgabe `STANDARD_BEARBEITER =
   'Max Mustermann'`), Schalter „Nachfragen zulassen, wenn ein Workflow-Schritt
   eine E-Mail vorsieht“ und Schalter „Farbmodus für Rot-Grün-Sehschwäche
@@ -107,7 +121,10 @@ Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
    Rechte verleiht das nicht.
 2. **Funktionen** (`StandardRolle` projektübergreifend, `Role` je Projekt):
    fachliche Zuständigkeiten, die Prozessschritten zugeordnet und im Projekt mit
-   Personen besetzt werden (`kontaktFuerRolleUndGewerk`). Mitgeliefert werden 15
+   Personen besetzt werden (`kontaktFuerRolleUndGewerk`). Ein Schritt speichert
+   nur die Bezeichnung der Funktion; welche Funktion und damit welche Person
+   gemeint ist, ergibt sich aus dem Gewerk des Eintrags – ersatzweise gilt die
+   übergreifende Funktion gleichen Namens. Mitgeliefert werden 15
    Funktionen (`src/bereiche/planlauf/domain/seed.ts`), davon zwei übergreifend
    (Planlaufmanagement, Projektleitung) und dreizehn je Gewerk (Fachplaner,
    Fachspezialist, Bauvorlageberechtiger, Bau AN, Bauüberwachung,
@@ -137,8 +154,9 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 
 ## 5. Setup von Null bis zur laufenden Anwendung
 
-1. **Voraussetzungen**: Node.js (die Veröffentlichung nutzt Node 22, siehe
-   `.github/workflows/pages.yml`) und npm. Weitere Werkzeuge sind nicht nötig.
+1. **Voraussetzungen**: Node.js und npm. Eine Fassung legt das Repository nicht
+   fest (kein `engines`-Eintrag in `package.json`, keine `.nvmrc`). Weitere
+   Werkzeuge sind nicht nötig.
 2. **Abhängigkeiten installieren**: `npm install` (bzw. `npm ci` bei
    vorhandener `package-lock.json`). Laufzeitabhängigkeiten sind nur `react`
    und `react-dom`; Vite, TypeScript und die Typpakete sind Entwicklungs-
@@ -157,11 +175,14 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 6. **Prüfen und bauen**: `npm run typecheck` (`tsc --noEmit`) und `npm run
    build` (`tsc -b && vite build`, Ergebnis in `dist/`). `npm run preview`
    liefert den Build lokal aus.
-7. **Veröffentlichen**: Der Workflow `.github/workflows/pages.yml` baut bei
-   jedem Push auf `main` bzw. den Entwicklungszweig und stellt `dist/` über
-   GitHub Pages bereit; zusätzlich wird die gebaute Fassung im Zweig unter
-   `app/` abgelegt. Wegen `base: './'` funktioniert die Anwendung auch in
-   einem Unterverzeichnis.
+7. **Veröffentlichen**: Das Repository enthält **keinen** GitHub-Actions-
+   Workflow (kein Ordner `.github/`). GitHub Pages liefert mit „Deploy from a
+   branch“ den Zweig selbst aus. Die Wurzel-`index.html` verweist auf
+   `/src/main.tsx`, das der Browser nicht ausführen kann; ihr Skript wechselt
+   deshalb nach 1,5 Sekunden auf `app/`. Dort liegt ein **eingecheckter Build**,
+   der bei jeder Änderung von Hand erneuert werden muss: `npm run build`, dann
+   den Inhalt von `dist/` nach `app/` übernehmen und committen. Wegen
+   `base: './'` funktioniert die Anwendung auch in einem Unterverzeichnis.
 
 ## 6. Bekannte Meldungen und ihre Ursachen
 
@@ -204,4 +225,6 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | Konsole: „Service Worker konnte nicht registriert werden: …“ | Registrierung abgelehnt, etwa ohne HTTPS (`src/shared/pwa.ts`). Die Anwendung läuft weiter, nur der Offline-Betrieb entfällt. |
 | Ausnahme: „useStore muss innerhalb des StoreProvider verwendet werden.“ | Entwicklungsfehler: Eine Komponente nutzt `useStore` außerhalb von `StoreProvider` (`src/bereiche/planlauf/store/store.tsx`). |
 | Seite „Nicht gefunden – Der aufgerufene Eintrag existiert nicht (mehr).“ | Die Adresse nennt ein Projekt oder einen Planlauf, den es nicht (mehr) gibt (`src/bereiche/planlauf/App.tsx`). |
-| Ein alter Stand erscheint nach einer Aktualisierung | Der Service Worker liefert aus dem Cache `mc-plan-v2` (`public/sw.js`); erst ein neuer Cache-Name bzw. das Abmelden des Service Workers zeigt die neue Fassung. |
+| Ein alter Stand erscheint nach einer Aktualisierung | Entweder liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v3` (`public/sw.js`). Beim Aktivieren löscht er alle älteren Caches; bis dahin hilft einmal Neuladen bzw. Strg+Umschalt+R. |
+| Planliste: Haken „Pläne einzeln durch den Planlauf führen“ ist ausgegraut – „Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.“ bzw. „Die Pläne laufen bereits einzeln – eine Rückkehr zur Bündelung ist nicht vorgesehen.“ | Kein Fehler: Sobald das Verzeichnis oder einer seiner Pläne einen Lauf hat, ist die Wahl gesperrt (`modusGesperrt` in `Plaene.tsx`). Richtung „einzeln“ geht es weiter über „Alle Pläne einzeln weiterführen …“ bzw. „Aus dem Verzeichnislauf herauslösen …“; eine Rückkehr zur Bündelung ist nicht umgesetzt. |
+| Konsole der Wurzelseite: 404 für `/src/main.tsx`, `icon.svg`, `icons/icon-192.png` | Kein Fehler: Die Wurzelseite ist der ausgelieferte Quellcode und springt nur nach `app/` weiter; dort gibt es diese Fehlanfragen nicht. |
