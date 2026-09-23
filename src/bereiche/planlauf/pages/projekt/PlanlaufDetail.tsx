@@ -6,6 +6,7 @@ import { useState } from 'react';
 import {
   aktuellerSchritt,
   ampelFuerSchritt,
+  funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
   massgeblicheAntwort,
   nichtImPfad,
@@ -682,6 +683,11 @@ function SchrittDialog({
   // Wer die Funktion im Projekt ausfüllt – Grundlage der automatischen Zuordnung
   const gewerk = data.documents.find((d) => d.id === run.documentId)?.gewerk ?? '';
   const automatischId = kontaktFuerRolleUndGewerk(kontakte, rollen, form.roleName, gewerk);
+  // Auswahl: Funktionen des Gewerks und die übergreifenden, je Name einmal.
+  // Eine bereits gesetzte Funktion bleibt wählbar, auch wenn sie nicht passt.
+  const rollenNamen = [
+    ...new Set([...funktionenFuerGewerk(rollen, gewerk), ...(form.roleName ? [form.roleName] : [])]),
+  ];
   const automatischKontakt = kontakte.find((c) => c.id === automatischId);
   const automatisch = automatischKontakt
     ? `${automatischKontakt.vorname} ${automatischKontakt.nachname}`
@@ -778,7 +784,7 @@ function SchrittDialog({
             value={form.roleName}
             onChange={rolleWechseln}
             placeholder="– keine Funktion –"
-            options={rollen.map((r) => ({ value: r.name, label: r.name }))}
+            options={rollenNamen.map((name) => ({ value: name, label: name }))}
           />
         </Field>
         <Field label="Nachweis bei Abschluss" hint="wird beim Erledigen abgefragt">

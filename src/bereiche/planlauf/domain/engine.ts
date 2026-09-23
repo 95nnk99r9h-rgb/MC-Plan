@@ -284,6 +284,18 @@ export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
  * Ermittelt die Person, die eine Rolle für ein bestimmtes Gewerk ausfüllt.
  * Rollen ohne Gewerkbezug sind einmal für alle Gewerke besetzt.
  */
+/**
+ * Funktionen, die für einen Eintrag eines Gewerks in Frage kommen: die des
+ * Gewerks und die übergreifenden – je Bezeichnung einmal. Ein Schritt merkt sich
+ * nur die Bezeichnung; welche Funktion und damit welche Person gemeint ist,
+ * ergibt sich aus dem Gewerk des Eintrags (siehe kontaktFuerRolleUndGewerk).
+ * Ohne Gewerk kommen alle Funktionen in Frage.
+ */
+export function funktionenFuerGewerk(rollen: Role[], gewerk: string): string[] {
+  const passend = rollen.filter((r) => !gewerk || r.gewerk === null || r.gewerk === gewerk);
+  return [...new Set(passend.map((r) => r.name))];
+}
+
 export function kontaktFuerRolleUndGewerk(
   kontakte: Contact[],
   rollen: Role[],

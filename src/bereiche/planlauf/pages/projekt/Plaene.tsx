@@ -11,6 +11,7 @@ import {
   aktuellerSchritt,
   gewerkeFuerProjekt,
   lfdNummern,
+  funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
   stepsAusTemplate,
 } from '../../domain/engine';
@@ -757,7 +758,7 @@ function PlanDialog({
                   Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Workflow selbst bleibt davon
                   unberührt.
                 </p>
-                <SchrittListe steps={steps} setSteps={setSteps} rollen={rollen.map((r) => r.name)} />
+                <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, form.gewerk)} />
               </div>
             </>
           ) : untergeordnet ? (
