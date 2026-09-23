@@ -224,14 +224,10 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
         }
       >
         <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
-        <td className="small">
-          <span className="row" style={{ gap: 8 }}>
-            <DocKindIcon kind={doc.kind} />
-            {DOCUMENT_KIND_LABEL[doc.kind]}
-          </span>
-        </td>
-        <td style={{ paddingLeft: eingerueckt ? 60 : 36 }}>
-          <span className="row" style={{ gap: 9, alignItems: 'flex-start' }}>
+        {/* Der Pfeil steht zwischen Nummer und Symbol; Symbol und Titel eines
+            untergeordneten Plans rücken gemeinsam ein – wie in der Übersicht. */}
+        <td className="small" style={{ paddingLeft: eingerueckt ? 60 : 36 }}>
+          <span className="row" style={{ gap: 9 }}>
             {kinder.length > 0 ? (
               <button
                 type="button"
@@ -246,6 +242,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 <Icon name="chevron" size={13} />
               </button>
             ) : null}
+            <DocKindIcon kind={doc.kind} />
+            {DOCUMENT_KIND_LABEL[doc.kind]}
+          </span>
+        </td>
+        <td style={{ paddingLeft: eingerueckt ? 38 : undefined }}>
+          <span className="row" style={{ gap: 9, alignItems: 'flex-start' }}>
             <span style={{ minWidth: 0 }}>
               <span className="num">
                 {doc.nummer}
