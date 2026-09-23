@@ -19,7 +19,9 @@ import {
   NACHWEIS_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
+  hatEigenenPlanlauf,
   istPrueferRolle,
+  verzeichnisGebuendelt,
   type AbbruchArt,
   type Nachweis,
   type PlanDocument,
@@ -31,7 +33,7 @@ import {
 } from '../../domain/types';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
-import { AmpelBadge, RunStatusBadge, StepTypBadge } from '../../components/common';
+import { AmpelBadge, DocKindIcon, RunStatusBadge, StepTypBadge } from '../../components/common';
 import {
   Badge,
   Callout,
@@ -60,7 +62,17 @@ export function PlanlaufDetail({
   /** Öffnet einen anderen Planlauf – etwa den Nachfolger nach einem Abbruch. */
   oeffneLauf?: (runId: string) => void;
 }) {
-  const { data, updateRun, updateStep, updateDocument, deleteRun, addRun, abbrechenRun } = useStore();
+  const {
+    data,
+    updateRun,
+    updateStep,
+    updateDocument,
+    deleteRun,
+    addRun,
+    abbrechenRun,
+    planHerausloesen,
+    verzeichnisAufteilen,
+  } = useStore();
   const toast = useToast();
   const [mailStep, setMailStep] = useState<RunStep | null>(null);
   const [bearbeiten, setBearbeiten] = useState<RunStep | null>(null);
@@ -69,8 +81,22 @@ export function PlanlaufDetail({
   const [abbrechen, setAbbrechen] = useState(false);
   const { setzeStatus: statusSetzen, nachweisDialog } = useSchrittStatus();
   const [aufgeklappt, setAufgeklappt] = useState<string[]>([]);
+  /** Die Pläne eines Verzeichnisses sind zunächst zugeklappt. */
+  const [plaeneOffen, setPlaeneOffen] = useState(false);
+  const [nachtrag, setNachtrag] = useState<{ art: 'herausloesen'; plan: PlanDocument } | { art: 'aufteilen' } | null>(
+    null,
+  );
 
   const doc = data.documents.find((d) => d.id === run.documentId);
+  // Pläne eines Verzeichnisses: laufen mit oder haben einen eigenen Lauf
+  const plaene =
+    doc?.kind === 'verzeichnis' ? data.documents.filter((d) => d.kind === 'plan' && d.parentId === doc.id) : [];
+  const eigenerLaufVon = (planId: string) =>
+    data.runs.find((r) => r.documentId === planId && r.status !== 'abgebrochen');
+  const mitlaufend = plaene.filter((p) => !hatEigenenPlanlauf(p, data.documents));
+  const ohneEigenenLauf = plaene.filter((p) => !eigenerLaufVon(p.id));
+  /** Nur ein laufender, gebündelter Verzeichnislauf lässt sich herauslösen bzw. aufteilen. */
+  const nachtraeglich = doc?.kind === 'verzeichnis' && verzeichnisGebuendelt(doc) && run.status === 'laufend';
   const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
   const abseits = nichtImPfad(run.steps);
   const aktiv = aktuellerSchritt(run);
@@ -165,7 +191,14 @@ export function PlanlaufDetail({
         </div>
       </div>
 
-      {run.status === 'abgebrochen' ? (
+      {run.status === 'abgebrochen' && run.abbruchArt === 'aufgeteilt' ? (
+        <Callout>
+          <strong>
+            In Einzelläufe der Pläne aufgeteilt{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.
+          </strong>
+          <div>Jeder Plan des Verzeichnisses führt den Planlauf seither mit dem übernommenen Stand selbst fort.</div>
+        </Callout>
+      ) : run.status === 'abgebrochen' ? (
         <Callout ton="error" icon="!">
           <strong>Planlauf abgebrochen{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.</strong>
           <div>{run.abbruchGrund || 'Ohne Begründung.'}</div>
@@ -200,6 +233,81 @@ export function PlanlaufDetail({
           </div>
         ) : null}
       </Card>
+
+      {plaene.length > 0 && doc ? (
+        <Card>
+          <CardHeader
+            titel="Pläne dieses Verzeichnisses"
+            sub={
+              verzeichnisGebuendelt(doc)
+                ? `${plaene.length} ${plaene.length === 1 ? 'Plan' : 'Pläne'} · ${mitlaufend.length} ${
+                    mitlaufend.length === 1 ? 'läuft' : 'laufen'
+                  } in diesem Planlauf mit · ${plaene.length - mitlaufend.length} mit eigenem Lauf`
+                : `${plaene.length} ${plaene.length === 1 ? 'Plan' : 'Pläne'} · jeder mit eigenem Planlauf`
+            }
+            actions={
+              <span className="row" style={{ gap: 6 }}>
+                {nachtraeglich && ohneEigenenLauf.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setNachtrag({ art: 'aufteilen' })}
+                  >
+                    Alle Pläne einzeln weiterführen …
+                  </button>
+                ) : null}
+                <button type="button" className="btn btn-sm" onClick={() => setPlaeneOffen((o) => !o)}>
+                  {plaeneOffen ? 'Ausblenden' : 'Anzeigen'}
+                </button>
+              </span>
+            }
+          />
+          {plaeneOffen
+            ? plaene.map((plan) => {
+                const eigener = eigenerLaufVon(plan.id);
+                return (
+                  <div className="list-row" key={plan.id}>
+                    <DocKindIcon kind="plan" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span className="num">
+                        {plan.nummer}
+                        {plan.index ? ` · ${INDEX_LABEL.plan} ${plan.index}` : ''}
+                      </span>
+                      <div>
+                        <strong>{plan.titel}</strong>
+                      </div>
+                    </div>
+                    {eigener ? (
+                      <>
+                        <RunStatusBadge status={eigener.status} />
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => oeffneLauf?.(eigener.id)}
+                        >
+                          Planlauf öffnen
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="small tertiary">läuft mit</span>
+                        {nachtraeglich ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setNachtrag({ art: 'herausloesen', plan })}
+                          >
+                            Herauslösen …
+                          </button>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            : null}
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader
@@ -444,6 +552,34 @@ export function PlanlaufDetail({
       ) : null}
 
       {nachweisDialog}
+
+      {nachtrag?.art === 'herausloesen' ? (
+        <ConfirmDialog
+          titel="Plan herauslösen?"
+          text={`„${nachtrag.plan.titel}“ erhält einen eigenen Planlauf und übernimmt dazu den Stand dieses Laufs – erledigte Schritte bleiben erledigt. Dieser Lauf geht für die übrigen Pläne weiter.`}
+          bestaetigenLabel="Herauslösen"
+          onConfirm={() => {
+            if (planHerausloesen(nachtrag.plan.id)) toast('Plan herausgelöst – er läuft jetzt einzeln weiter.');
+          }}
+          onClose={() => setNachtrag(null)}
+        />
+      ) : null}
+
+      {nachtrag?.art === 'aufteilen' ? (
+        <ConfirmDialog
+          titel="Alle Pläne einzeln weiterführen?"
+          text={`${ohneEigenenLauf.length === 1 ? 'Ein Plan erhält' : `${ohneEigenenLauf.length} Pläne erhalten`} einen eigenen Planlauf mit dem Stand dieses Laufs. Dieser gebündelte Lauf endet, das Verzeichnis ordnet die Pläne danach nur noch. Das lässt sich nicht rückgängig machen.`}
+          bestaetigenLabel="Einzeln weiterführen"
+          onConfirm={() => {
+            const anzahl = verzeichnisAufteilen(run.documentId);
+            toast(
+              anzahl === 1 ? 'Ein Plan läuft jetzt einzeln weiter.' : `${anzahl} Pläne laufen jetzt einzeln weiter.`,
+            );
+            setPlaeneOffen(true);
+          }}
+          onClose={() => setNachtrag(null)}
+        />
+      ) : null}
 
       {abbrechen ? (
         <AbbruchDialog

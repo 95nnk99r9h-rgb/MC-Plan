@@ -23,7 +23,8 @@ import { useStore } from '../store/store';
 import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './common';
 import { EmailDialog } from './EmailDialog';
 import { ErledigtButton, useSchrittStatus } from './SchrittStatus';
-import { EmptyState, Progress } from '../../../shared/ui';
+import { ConfirmDialog, EmptyState, Progress } from '../../../shared/ui';
+import { useToast } from '../../../shared/toast';
 import { Icon } from '../../../shared/icons';
 
 interface Eintrag {
@@ -89,8 +90,11 @@ export function PlanlaufListe({
   spaltenFilter?: SpaltenFilter;
   oeffneLauf: (runId: string) => void;
 }) {
-  const { data } = useStore();
+  const { data, planHerausloesen } = useStore();
+  const toast = useToast();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
+  /** Plan, der aus dem laufenden Lauf seines Verzeichnisses herausgelöst werden soll. */
+  const [herausloesen, setHerausloesen] = useState<{ plan: PlanDocument; lauf: PlanRun } | null>(null);
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
   /** Paketzeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
   const [abweichend, setAbweichend] = useState<string[]>([]);
@@ -581,7 +585,21 @@ export function PlanlaufListe({
               </td>
               <td className="col-optional" />
               <td />
-              <td className="actions" />
+              <td className="actions">
+                {run.status === 'laufend' ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    title="Eigenen Planlauf mit dem Stand des Verzeichnislaufs starten"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHerausloesen({ plan, lauf: run });
+                    }}
+                  >
+                    Herauslösen …
+                  </button>
+                ) : null}
+              </td>
             </tr>
             );
           })
@@ -782,6 +800,17 @@ export function PlanlaufListe({
         <EmailDialog project={project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
       ) : null}
       {nachweisDialog}
+      {herausloesen ? (
+        <ConfirmDialog
+          titel="Plan herauslösen?"
+          text={`„${herausloesen.plan.titel}“ erhält einen eigenen Planlauf und übernimmt dazu den Stand von „${herausloesen.lauf.name}“ – erledigte Schritte bleiben erledigt. Der Lauf des Verzeichnisses geht für die übrigen Pläne weiter.`}
+          bestaetigenLabel="Herauslösen"
+          onConfirm={() => {
+            if (planHerausloesen(herausloesen.plan.id)) toast('Plan herausgelöst – er läuft jetzt einzeln weiter.');
+          }}
+          onClose={() => setHerausloesen(null)}
+        />
+      ) : null}
     </>
   );
 }
