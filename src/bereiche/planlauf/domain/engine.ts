@@ -220,6 +220,7 @@ export function verzugTage(run: PlanRun): number {
  */
 export function abbruchHinweis(run: PlanRun, kind: DocumentKind = 'plan'): string {
   if (run.status !== 'abgebrochen') return '';
+  if (run.abbruchArt === 'aufgeteilt') return 'in Einzelläufe der Pläne aufgeteilt';
   if (run.abbruchArt !== 'neuer_index') return 'ersatzlos abgebrochen';
   const label = INDEX_LABEL[kind];
   return run.abbruchNeuerIndex ? `ersetzt durch ${label} ${run.abbruchNeuerIndex}` : `ersetzt durch neuen ${label}`;
@@ -320,8 +321,49 @@ export function kontaktFuerRolleUndGewerk(
 export function eigenstaendigeLaeufe(documents: PlanDocument[], runs: PlanRun[]): PlanRun[] {
   return runs.filter((r) => {
     const doc = documents.find((d) => d.id === r.documentId);
-    return !doc || hatEigenenPlanlauf(doc);
+    return !doc || hatEigenenPlanlauf(doc, documents);
   });
+}
+
+/**
+ * Übernimmt einen Planlauf samt Stand für einen anderen Eintrag – etwa wenn
+ * ein Plan aus dem gebündelten Lauf seines Verzeichnisses herausgelöst wird.
+ * Erledigte Schritte bleiben erledigt, der offene Schritt bleibt offen, Start
+ * und Termine laufen weiter. Schritte und Antworten erhalten neue Kennungen;
+ * Verweise (Nachfolger, Antwortziele, gewählte Antwort) werden umgebogen.
+ */
+export function laufUebernehmen(
+  quelle: PlanRun,
+  ziel: { documentId: ID; name: string; index: string; bemerkung: string },
+  neueId: (prefix: string) => ID,
+): Omit<PlanRun, 'id'> {
+  const schrittIds = new Map(quelle.steps.map((s) => [s.id, neueId('rs')]));
+  const umbiegen = (z: ID | 'ende' | null) => (z === 'ende' || z === null ? z : (schrittIds.get(z) ?? null));
+  return {
+    projectId: quelle.projectId,
+    documentId: ziel.documentId,
+    templateId: quelle.templateId,
+    templateName: quelle.templateName,
+    name: ziel.name,
+    index: ziel.index,
+    start: quelle.start,
+    status: 'laufend',
+    abbruchGrund: null,
+    abbruchDatum: null,
+    abbruchArt: null,
+    abbruchNeuerIndex: null,
+    bemerkung: ziel.bemerkung,
+    steps: quelle.steps.map((s) => {
+      const antwortIds = new Map(s.antworten.map((a) => [a.id, neueId('ant')]));
+      return {
+        ...s,
+        id: schrittIds.get(s.id)!,
+        naechster: umbiegen(s.naechster),
+        antworten: s.antworten.map((a) => ({ ...a, id: antwortIds.get(a.id)!, ziel: umbiegen(a.ziel) })),
+        gewaehlteAntwortId: s.gewaehlteAntwortId ? (antwortIds.get(s.gewaehlteAntwortId) ?? null) : null,
+      };
+    }),
+  };
 }
 
 /**

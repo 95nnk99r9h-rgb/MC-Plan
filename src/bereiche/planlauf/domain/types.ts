@@ -237,11 +237,23 @@ export interface PlanDocument {
   projectId: ID;
   kind: DocumentKind;
   /**
-   * Übergeordnetes Planverzeichnis eines Plans. Pläne eines Verzeichnisses
-   * durchlaufen keinen eigenen Planlauf – maßgeblich ist der Lauf des
-   * Verzeichnisses. Pläne ohne Verzeichnis sind Einzelpläne mit eigenem Lauf.
+   * Übergeordnetes Planverzeichnis eines Plans. Ob der Plan im Lauf des
+   * Verzeichnisses mitläuft oder einen eigenen hat, bestimmen planlaufModus
+   * des Verzeichnisses und eigenerLauf des Plans (siehe hatEigenenPlanlauf).
+   * Pläne ohne Verzeichnis sind Einzelpläne mit eigenem Lauf.
    */
   parentId: ID | null;
+  /**
+   * Nur Planverzeichnisse: gebündelt durchläuft das Verzeichnis den Planlauf
+   * und seine Pläne laufen mit; bei „einzeln“ hat jeder Plan einen eigenen
+   * Lauf und das Verzeichnis ordnet nur. Fehlt die Angabe, gilt gebündelt.
+   */
+  planlaufModus?: PlanlaufModus;
+  /**
+   * Nur Pläne eines gebündelten Verzeichnisses: aus dessen Lauf herausgelöst,
+   * der Plan hat seither einen eigenen Lauf.
+   */
+  eigenerLauf?: boolean;
   /**
    * Planpaket, dem der Eintrag zugeordnet ist. Reines Ordnungsmerkmal ohne
    * Auswirkung auf Planläufe und Fristen.
@@ -266,10 +278,31 @@ export interface PlanDocument {
  * Planpakete sind reine Ordnungsmerkmale, Pläne eines Verzeichnisses laufen
  * im Lauf des Verzeichnisses mit.
  */
-export function hatEigenenPlanlauf(doc: { kind: DocumentKind; parentId: ID | null }): boolean {
+export function hatEigenenPlanlauf(
+  doc: Pick<PlanDocument, 'kind' | 'parentId' | 'planlaufModus' | 'eigenerLauf'>,
+  dokumente: Pick<PlanDocument, 'id' | 'planlaufModus'>[],
+): boolean {
   if (doc.kind === 'paket') return false;
-  if (doc.kind === 'verzeichnis') return true;
-  return doc.parentId === null;
+  if (doc.kind === 'verzeichnis') return verzeichnisGebuendelt(doc);
+  if (doc.parentId === null) return true;
+  if (doc.eigenerLauf) return true;
+  // Ein Plan läuft einzeln, wenn sein Verzeichnis die Pläne einzeln führt.
+  // Unbekanntes Verzeichnis: wie gebündelt – der Plan läuft dann nirgends.
+  const eltern = dokumente.find((d) => d.id === doc.parentId);
+  return eltern ? !verzeichnisGebuendelt(eltern) : false;
+}
+
+/** Wie ein Planverzeichnis den Planlauf durchläuft. */
+export type PlanlaufModus = 'gebuendelt' | 'einzeln';
+
+export const PLANLAUF_MODUS_LABEL: Record<PlanlaufModus, string> = {
+  gebuendelt: 'Gebündelt',
+  einzeln: 'Pläne einzeln',
+};
+
+/** Durchläuft das Verzeichnis selbst den Planlauf? Ohne Angabe: ja. */
+export function verzeichnisGebuendelt(doc: Pick<PlanDocument, 'planlaufModus'>): boolean {
+  return doc.planlaufModus !== 'einzeln';
 }
 
 /* ------------------------------------------------------------------ */
@@ -366,11 +399,14 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
 };
 
 /** Grundform des Abbruchs: ersatzlos oder mit neuem Index bzw. neuer Ausgabe. */
-export type AbbruchArt = 'ersatzlos' | 'neuer_index';
+export type AbbruchArt = 'ersatzlos' | 'neuer_index' | 'aufgeteilt';
 
 export const ABBRUCH_ART_LABEL: Record<AbbruchArt, string> = {
   ersatzlos: 'ersatzlos',
   neuer_index: 'neuer Index / neue Ausgabe',
+  // Kein Abbruch im eigentlichen Sinn: der gebündelte Lauf eines
+  // Planverzeichnisses wurde in Einzelläufe seiner Pläne überführt.
+  aufgeteilt: 'in Einzelläufe der Pläne aufgeteilt',
 };
 
 export interface PlanRun {

@@ -194,7 +194,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
 
       // Planlauf starten, sofern ein Workflow benannt ist und der Eintrag einen eigenen Lauf hat
       const vorlage = vorlagen.find((t) => t.id === z.workflowId);
-      if (!vorlage || !hatEigenenPlanlauf({ kind: z.doc.kind, parentId })) continue;
+      // Ein im Import neu angelegtes Verzeichnis ist gebündelt; ein vorhandenes
+      // kann seine Pläne einzeln führen – dann erhält auch dieser Plan einen Lauf.
+      if (!vorlage || !hatEigenenPlanlauf({ kind: z.doc.kind, parentId }, data.documents)) continue;
 
       const steps = stepsAusTemplate(
         vorlage,

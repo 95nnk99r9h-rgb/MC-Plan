@@ -13,6 +13,7 @@ import {
   SCHRITT_EINGANG,
   hatEigenenPlanlauf,
   istEingangPLM,
+  verzeichnisGebuendelt,
   type PlanDocument,
   type PlanRun,
   type Project,
@@ -30,6 +31,14 @@ interface Eintrag {
   doc: PlanDocument | undefined;
   step: RunStep | undefined;
 }
+
+/**
+ * Ein Eintrag der obersten Ebene einer Gruppe: ein Planlauf – oder ein
+ * Planverzeichnis, dessen Pläne einzeln laufen und das sie nur zusammenfasst.
+ */
+type Knoten =
+  | { art: 'lauf'; eintrag: Eintrag }
+  | { art: 'klammer'; verzeichnis: PlanDocument; kinder: Eintrag[] };
 
 /** Spalten, nach denen sich die Liste sortieren lässt. */
 type SortFeld = 'titel' | 'gewerk' | 'schritt' | 'zustaendig' | 'fortschritt' | 'status';
@@ -142,15 +151,26 @@ export function PlanlaufListe({
     setOffeneVerzeichnisse((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
   /**
-   * Stand eines Planpakets: Planpakete laufen selbst nicht, ihr Fortschritt
-   * und Status ergeben sich aus den enthaltenen Plänen und Verzeichnissen.
+   * Stand einer Klammer – eines Planpakets oder eines Verzeichnisses mit
+   * einzeln laufenden Plänen: Sie laufen selbst nicht, Fortschritt und Status
+   * ergeben sich aus den enthaltenen Einträgen mit eigenem Lauf.
    */
-  const paketStand = (paketId: string) => {
-    // Nur Einträge mit eigenem Planlauf; Pläne eines Verzeichnisses laufen
-    // in dessen Lauf mit und dürfen nicht doppelt zählen.
-    const zugehoerig = data.documents.filter(
-      (d) => d.kind !== 'paket' && paketVon(d) === paketId && hatEigenenPlanlauf(d),
+  const paketStand = (paketId: string) =>
+    standVon(
+      data.documents.filter(
+        (d) => d.kind !== 'paket' && paketVon(d) === paketId && hatEigenenPlanlauf(d, data.documents),
+      ),
     );
+  const verzeichnisStand = (verzeichnisId: string) =>
+    standVon(
+      data.documents.filter(
+        (d) => d.kind === 'plan' && d.parentId === verzeichnisId && hatEigenenPlanlauf(d, data.documents),
+      ),
+    );
+
+  const standVon = (zugehoerig: PlanDocument[]) => {
+    // Nur Einträge mit eigenem Planlauf; Pläne, die im Lauf ihres Verzeichnisses
+    // mitlaufen, dürfen nicht doppelt zählen.
     const basis = alleRuns ?? runs;
     // Je Eintrag zählt ein Lauf: der laufende, sonst der abgeschlossene.
     // Abgebrochene Läufe (etwa ein Vorgänger vor einem neuen Index) bleiben
@@ -218,6 +238,44 @@ export function PlanlaufListe({
   /** Sortiert eine Gruppe von Einträgen nach der gewählten Spalte. */
   const sortieren = (liste: Eintrag[]) =>
     sortFeld ? [...liste].sort((a, b) => vergleich(schluessel(a, sortFeld), schluessel(b, sortFeld))) : liste;
+
+  /** Eigener Lauf eines Plans in der angezeigten Liste – sofern vorhanden. */
+  const laufDesPlans = (planId: string) => laufende.find((e) => e.doc?.id === planId);
+
+  /**
+   * Oberste Ebene einer Gruppe. Pläne mit eigenem Lauf stehen unter ihrem
+   * Verzeichnis: unter dessen Zeile, wenn es gebündelt läuft, sonst unter einer
+   * Klammerzeile. Ist das Verzeichnis ausgefiltert, steht der Plan für sich.
+   */
+  const knotenVon = (liste: Eintrag[]): Knoten[] => {
+    const mitLauf = new Set(liste.filter((e) => e.doc?.kind === 'verzeichnis').map((e) => e.doc!.id));
+    const klammern = new Map<string, Eintrag[]>();
+    const knoten: Knoten[] = [];
+    for (const e of liste) {
+      const elternId = e.doc?.kind === 'plan' ? e.doc.parentId : null;
+      if (elternId && mitLauf.has(elternId)) continue;
+      const eltern = elternId ? data.documents.find((d) => d.id === elternId) : undefined;
+      if (eltern && !verzeichnisGebuendelt(eltern)) {
+        // Klammer an der Stelle ihres ersten Plans einreihen
+        if (!klammern.has(eltern.id)) {
+          klammern.set(eltern.id, []);
+          knoten.push({ art: 'klammer', verzeichnis: eltern, kinder: klammern.get(eltern.id)! });
+        }
+        klammern.get(eltern.id)!.push(e);
+        continue;
+      }
+      knoten.push({ art: 'lauf', eintrag: e });
+    }
+    if (!sortFeld) return knoten;
+    const wert = (k: Knoten): string | number => {
+      if (k.art === 'lauf') return schluessel(k.eintrag, sortFeld);
+      if (sortFeld === 'titel') return `${k.verzeichnis.nummer} ${k.verzeichnis.titel}`.toLowerCase();
+      if (sortFeld === 'gewerk') return k.verzeichnis.gewerk.toLowerCase();
+      // Sonst zählt der Plan, der in der gewählten Richtung zuerst käme
+      return schluessel(sortieren(k.kinder)[0], sortFeld);
+    };
+    return [...knoten].sort((a, b) => vergleich(wert(a), wert(b)));
+  };
 
   const spalteWaehlen = (feld: SortFeld) => {
     if (feld === sortFeld) {
@@ -351,7 +409,7 @@ export function PlanlaufListe({
     );
   }
 
-  const zeile = ({ run, doc, step: offenerSchritt }: Eintrag, eingerueckt = false) => {
+  const zeile = ({ run, doc, step: offenerSchritt }: Eintrag, eingerueckt = false, unterVerzeichnis = false) => {
     // Ein abgebrochener Lauf ist abgeschlossene Vergangenheit: kein aktueller
     // Schritt, kein Fortschritt und nichts mehr zu erledigen.
     const abgebrochen = run.status === 'abgebrochen';
@@ -372,7 +430,8 @@ export function PlanlaufListe({
     const anzeigeIndex = abgebrochen ? run.index || doc?.index : doc?.index;
     // Position von Symbol und Titel; der Pfeil liegt 29 px davor und braucht
     // darum auch ohne Planpakete etwas Vorlauf.
-    const einzug = eingerueckt ? 46 : 36;
+    // Pläne mit eigenem Lauf unter ihrem Verzeichnis rücken eine Stufe weiter ein.
+    const einzug = (eingerueckt ? 46 : 36) + (unterVerzeichnis ? 28 : 0);
     return (
       <Fragment key={run.id}>
       <tr
@@ -495,7 +554,14 @@ export function PlanlaufListe({
       </tr>
 
       {aufgeklappt
-        ? plaene.map((plan) => (
+        ? plaene.map((plan) => {
+            // Herausgelöst: der Plan zeigt seinen eigenen Stand. Ist sein Lauf
+            // ausgefiltert, bleibt die Zeile weg.
+            if (hatEigenenPlanlauf(plan, data.documents)) {
+              const eigener = laufDesPlans(plan.id);
+              return eigener ? zeile(eigener, eingerueckt, true) : null;
+            }
+            return (
             <tr key={plan.id} className="unterzeile">
               <td style={{ paddingLeft: einzug + 28 }}>
                 <span className="row" style={{ gap: 9 }}>
@@ -517,11 +583,77 @@ export function PlanlaufListe({
               <td />
               <td className="actions" />
             </tr>
-          ))
+            );
+          })
         : null}
       </Fragment>
     );
   };
+
+  /**
+   * Planverzeichnis, dessen Pläne einzeln laufen: Es läuft selbst nicht und
+   * fasst seine Pläne zusammen – Fortschritt und Status wie bei einem Paket.
+   */
+  const klammerZeile = (verzeichnis: PlanDocument, kinder: Eintrag[], eingerueckt: boolean) => {
+    const offen = offeneVerzeichnisse.includes(verzeichnis.id);
+    const stand = verzeichnisStand(verzeichnis.id);
+    const einzug = eingerueckt ? 46 : 36;
+    return (
+      <Fragment key={`klammer-${verzeichnis.id}`}>
+        <tr className="klammer-zeile">
+          <td style={{ paddingLeft: einzug }}>
+            <span className="row" style={{ gap: 9 }}>
+              <button
+                type="button"
+                className={`chev-btn chev-vorn ${offen ? 'offen' : ''}`}
+                title={offen ? 'Pläne ausblenden' : 'Pläne anzeigen'}
+                aria-label="Pläne des Verzeichnisses anzeigen"
+                onClick={() => verzeichnisKlappen(verzeichnis.id)}
+              >
+                <Icon name="chevron" size={13} />
+              </button>
+              <DocKindIcon kind="verzeichnis" />
+              <span style={{ minWidth: 0 }}>
+                <span className="num">
+                  {verzeichnis.nummer}
+                  {verzeichnis.index ? ` · ${INDEX_LABEL.verzeichnis} ${verzeichnis.index}` : ''}
+                </span>
+                <div>
+                  <strong>{verzeichnis.titel}</strong>
+                  <span className="small tertiary"> · Pläne einzeln</span>
+                </div>
+              </span>
+            </span>
+          </td>
+          <td className="small muted">{verzeichnis.gewerk || '–'}</td>
+          <td className="small tertiary" colSpan={2}>
+            {kinder.length} {kinder.length === 1 ? 'laufender Plan' : 'laufende Pläne'}
+          </td>
+          <td className="col-optional">
+            <span className="row" style={{ gap: 8 }}>
+              <Progress wert={stand.pct} />
+              <span className="small tertiary">{stand.pct}%</span>
+            </span>
+          </td>
+          <td>
+            {stand.status === 'laufend' && stand.ampel ? (
+              <AmpelBadge ampel={stand.ampel} />
+            ) : stand.status ? (
+              <RunStatusBadge status={stand.status} />
+            ) : null}
+          </td>
+          <td className="actions" />
+        </tr>
+        {offen ? sortieren(kinder).map((k) => zeile(k, eingerueckt, true)) : null}
+      </Fragment>
+    );
+  };
+
+  /** Rendert die oberste Ebene einer Gruppe. */
+  const knotenZeilen = (liste: Eintrag[], eingerueckt: boolean) =>
+    knotenVon(liste).map((k) =>
+      k.art === 'lauf' ? zeile(k.eintrag, eingerueckt) : klammerZeile(k.verzeichnis, k.kinder, eingerueckt),
+    );
 
   return (
     <>
@@ -594,7 +726,7 @@ export function PlanlaufListe({
                     </td>
                     <td className="actions" />
                   </tr>
-                  {aufgeklappt ? inhalt.map((e) => zeile(e, true)) : null}
+                  {aufgeklappt ? knotenZeilen(inhalt, true) : null}
                 </Fragment>
               );
             })}
@@ -618,7 +750,7 @@ export function PlanlaufListe({
               </tr>
             ) : null}
             {pakete.length === 0 || istOffen('ohne-paket')
-              ? sortieren(ohnePaket).map((e) => zeile(e, pakete.length > 0))
+              ? knotenZeilen(ohnePaket, pakete.length > 0)
               : null}
 
             {verworfene.length > 0 ? (
