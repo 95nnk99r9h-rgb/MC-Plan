@@ -21,6 +21,7 @@ import {
 } from '../domain/types';
 import { useStore } from '../store/store';
 import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './common';
+import { BuendelnDialog } from './BuendelnDialog';
 import { EmailDialog } from './EmailDialog';
 import { ErledigtButton, useSchrittStatus } from './SchrittStatus';
 import { ConfirmDialog, EmptyState, Progress } from '../../../shared/ui';
@@ -95,6 +96,8 @@ export function PlanlaufListe({
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   /** Plan, der aus dem laufenden Lauf seines Verzeichnisses herausgelöst werden soll. */
   const [herausloesen, setHerausloesen] = useState<{ plan: PlanDocument; lauf: PlanRun } | null>(null);
+  /** Verzeichnis, dessen einzeln laufende Pläne wieder gebündelt werden sollen. */
+  const [buendeln, setBuendeln] = useState<PlanDocument | null>(null);
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
   /** Paketzeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
   const [abweichend, setAbweichend] = useState<string[]>([]);
@@ -660,7 +663,16 @@ export function PlanlaufListe({
               <RunStatusBadge status={stand.status} />
             ) : null}
           </td>
-          <td className="actions" />
+          <td className="actions">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              title="Ausgewählte Pläne wieder in einem gemeinsamen Verzeichnislauf führen"
+              onClick={() => setBuendeln(verzeichnis)}
+            >
+              Bündeln …
+            </button>
+          </td>
         </tr>
         {offen ? sortieren(kinder).map((k) => zeile(k, eingerueckt, true)) : null}
       </Fragment>
@@ -800,6 +812,7 @@ export function PlanlaufListe({
         <EmailDialog project={project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
       ) : null}
       {nachweisDialog}
+      {buendeln ? <BuendelnDialog verzeichnis={buendeln} onClose={() => setBuendeln(null)} /> : null}
       {herausloesen ? (
         <ConfirmDialog
           titel="Plan herauslösen?"

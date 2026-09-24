@@ -10,6 +10,7 @@ import { Fragment, useState } from 'react';
 import {
   aktuellerSchritt,
   gewerkeFuerProjekt,
+  laufUeberfuehrt,
   lfdNummern,
   funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
@@ -36,6 +37,7 @@ import { useToast } from '../../../../shared/toast';
 import { DocKindIcon } from '../../components/common';
 import { SchrittListe } from '../Workflows';
 import { PlaeneImport } from './PlaeneImport';
+import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import {
   Callout,
   Card,
@@ -180,8 +182,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
    * Abbruch, solange kein weiterer Lauf gestartet wurde.
    */
   const abbruchZusatz = (d: PlanDocument) => {
-    // Ein in Einzelläufe aufgeteilter Verzeichnislauf ist kein Abbruch des Eintrags
-    const laeufe = data.runs.filter((r) => r.documentId === d.id && r.abbruchArt !== 'aufgeteilt');
+    // Aufgeteilte bzw. wieder gebündelte Läufe sind kein Abbruch des Eintrags
+    const laeufe = data.runs.filter((r) => r.documentId === d.id && !laufUeberfuehrt(r));
     const ersetzt = [...laeufe]
       .reverse()
       .find((r) => r.status === 'abgebrochen' && r.abbruchArt === 'neuer_index');
@@ -423,7 +425,7 @@ function PlanDialog({
     useStore();
   const toast = useToast();
   const [loeschen, setLoeschen] = useState(false);
-  const [nachtrag, setNachtrag] = useState<'herausloesen' | 'aufteilen' | null>(null);
+  const [nachtrag, setNachtrag] = useState<'herausloesen' | 'aufteilen' | 'buendeln' | null>(null);
 
   const vorlagen = data.templates.filter((t) => t.projectId === null || t.projectId === project.id);
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
@@ -793,7 +795,7 @@ function PlanDialog({
                 hint={
                   modusGesperrt
                     ? verzeichnisEinzeln
-                      ? 'Die Pläne laufen bereits einzeln – eine Rückkehr zur Bündelung ist nicht vorgesehen.'
+                      ? 'Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.'
                       : 'Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.'
                     : 'Ohne Haken durchläuft das Verzeichnis den Planlauf gebündelt, seine Pläne laufen mit.'
                 }
@@ -808,6 +810,11 @@ function PlanDialog({
                     />
                     Pläne einzeln durch den Planlauf führen
                   </label>
+                  {doc && planeMitEigenemLauf(data.documents, data.runs, doc.id).length > 0 ? (
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setNachtrag('buendeln')}>
+                      Pläne wieder bündeln …
+                    </button>
+                  ) : null}
                   {buendelLauf && planIds.length > 0 ? (
                     <button type="button" className="btn btn-sm btn-outline" onClick={() => setNachtrag('aufteilen')}>
                       Alle Pläne einzeln weiterführen …
@@ -902,6 +909,10 @@ function PlanDialog({
           }}
           onClose={() => setNachtrag(null)}
         />
+      ) : null}
+
+      {nachtrag === 'buendeln' && doc ? (
+        <BuendelnDialog verzeichnis={doc} onClose={() => setNachtrag(null)} onGebuendelt={() => onClose()} />
       ) : null}
 
       {nachtrag === 'aufteilen' && doc && buendelLauf ? (

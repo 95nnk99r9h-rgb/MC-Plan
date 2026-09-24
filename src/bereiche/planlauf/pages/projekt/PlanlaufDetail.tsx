@@ -46,6 +46,7 @@ import {
   TextArea,
   TextInput,
 } from '../../../../shared/ui';
+import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import { EmailDialog } from '../../components/EmailDialog';
 import { useSchrittStatus } from '../../components/SchrittStatus';
 import { Icon } from '../../../../shared/icons';
@@ -83,9 +84,9 @@ export function PlanlaufDetail({
   const [aufgeklappt, setAufgeklappt] = useState<string[]>([]);
   /** Die Pläne eines Verzeichnisses sind zunächst zugeklappt. */
   const [plaeneOffen, setPlaeneOffen] = useState(false);
-  const [nachtrag, setNachtrag] = useState<{ art: 'herausloesen'; plan: PlanDocument } | { art: 'aufteilen' } | null>(
-    null,
-  );
+  const [nachtrag, setNachtrag] = useState<
+    { art: 'herausloesen'; plan: PlanDocument } | { art: 'aufteilen' } | { art: 'buendeln' } | null
+  >(null);
 
   const doc = data.documents.find((d) => d.id === run.documentId);
   // Pläne eines Verzeichnisses: laufen mit oder haben einen eigenen Lauf
@@ -97,6 +98,8 @@ export function PlanlaufDetail({
   const ohneEigenenLauf = plaene.filter((p) => !eigenerLaufVon(p.id));
   /** Nur ein laufender, gebündelter Verzeichnislauf lässt sich herauslösen bzw. aufteilen. */
   const nachtraeglich = doc?.kind === 'verzeichnis' && verzeichnisGebuendelt(doc) && run.status === 'laufend';
+  /** Pläne mit eigenem Lauf lassen sich wieder bündeln – auch nach dem Aufteilen. */
+  const buendelbar = doc?.kind === 'verzeichnis' ? planeMitEigenemLauf(data.documents, data.runs, doc.id).length : 0;
   const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
   const abseits = nichtImPfad(run.steps);
   const aktiv = aktuellerSchritt(run);
@@ -198,6 +201,14 @@ export function PlanlaufDetail({
           </strong>
           <div>Jeder Plan des Verzeichnisses führt den Planlauf seither mit dem übernommenen Stand selbst fort.</div>
         </Callout>
+      ) : run.status === 'abgebrochen' && run.abbruchArt === 'gebuendelt' ? (
+        <Callout>
+          <strong>
+            Wieder im Planlauf des Verzeichnisses gebündelt
+            {run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.
+          </strong>
+          <div>Der Plan läuft seither im gebündelten Lauf seines Verzeichnisses mit.</div>
+        </Callout>
       ) : run.status === 'abgebrochen' ? (
         <Callout ton="error" icon="!">
           <strong>Planlauf abgebrochen{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.</strong>
@@ -247,6 +258,15 @@ export function PlanlaufDetail({
             }
             actions={
               <span className="row" style={{ gap: 6 }}>
+                {buendelbar > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setNachtrag({ art: 'buendeln' })}
+                  >
+                    Pläne wieder bündeln …
+                  </button>
+                ) : null}
                 {nachtraeglich && ohneEigenenLauf.length > 0 ? (
                   <button
                     type="button"
@@ -562,6 +582,18 @@ export function PlanlaufDetail({
             if (planHerausloesen(nachtrag.plan.id)) toast('Plan herausgelöst – er läuft jetzt einzeln weiter.');
           }}
           onClose={() => setNachtrag(null)}
+        />
+      ) : null}
+
+      {nachtrag?.art === 'buendeln' && doc ? (
+        <BuendelnDialog
+          verzeichnis={doc}
+          onClose={() => setNachtrag(null)}
+          onGebuendelt={(runId) => {
+            setPlaeneOffen(true);
+            // Ist ein neuer Verzeichnislauf entstanden, dorthin wechseln
+            if (runId !== run.id) oeffneLauf?.(runId);
+          }}
         />
       ) : null}
 

@@ -221,6 +221,7 @@ export function verzugTage(run: PlanRun): number {
 export function abbruchHinweis(run: PlanRun, kind: DocumentKind = 'plan'): string {
   if (run.status !== 'abgebrochen') return '';
   if (run.abbruchArt === 'aufgeteilt') return 'in Einzelläufe der Pläne aufgeteilt';
+  if (run.abbruchArt === 'gebuendelt') return 'wieder im Planlauf des Verzeichnisses gebündelt';
   if (run.abbruchArt !== 'neuer_index') return 'ersatzlos abgebrochen';
   const label = INDEX_LABEL[kind];
   return run.abbruchNeuerIndex ? `ersetzt durch ${label} ${run.abbruchNeuerIndex}` : `ersetzt durch neuen ${label}`;
@@ -318,6 +319,15 @@ export function kontaktFuerRolleUndGewerk(
  * sie – etwa weil sie erst später zugeordnet wurden – noch einen eigenen Lauf,
  * bleibt dieser erhalten, zählt aber nicht mehr als eigenständiger Planlauf.
  */
+/**
+ * Lauf, der nicht abgebrochen, sondern in eine andere Form überführt wurde:
+ * aufgeteilt in Einzelläufe oder wieder im Verzeichnis gebündelt. Solche Läufe
+ * zählen nicht als Abbruch des Eintrags.
+ */
+export function laufUeberfuehrt(run: Pick<PlanRun, 'status' | 'abbruchArt'>): boolean {
+  return run.status === 'abgebrochen' && (run.abbruchArt === 'aufgeteilt' || run.abbruchArt === 'gebuendelt');
+}
+
 export function eigenstaendigeLaeufe(documents: PlanDocument[], runs: PlanRun[]): PlanRun[] {
   return runs.filter((r) => {
     const doc = documents.find((d) => d.id === r.documentId);

@@ -4,6 +4,7 @@ import {
   aktuellerSchritt,
   ampelFuerSchritt,
   eigenstaendigeLaeufe,
+  laufUeberfuehrt,
   fortschritt,
   offeneFristen,
 } from '../../domain/engine';
@@ -53,7 +54,8 @@ export function Uebersicht({
   // Abgebrochene Läufe kommen vollständig dazu: auch der Vorgänger eines neuen
   // Index bleibt so sichtbar und steht in der Liste gesammelt am Ende.
   const rang = (r: (typeof laeufe)[number]) => (r.status === 'laufend' ? 0 : 1);
-  const verworfen = laeufe.filter((r) => r.status === 'abgebrochen');
+  // Aufgeteilte bzw. wieder gebündelte Läufe sind kein Abbruch und entfallen hier
+  const verworfen = laeufe.filter((r) => r.status === 'abgebrochen' && !laufUeberfuehrt(r));
   const aktuell = laeufe
     .filter((r) => r.status !== 'abgebrochen')
     .sort((a, b) => rang(a) - rang(b))
