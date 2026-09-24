@@ -342,6 +342,9 @@ Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie d
 
 ## Aufbau des Codes
 
+Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
+veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md).
+
 MC Plan besteht aus zwei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
 seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen eigenen Router mit;
 die beiden greifen nicht aufeinander zu. Die Shell wählt anhand der ersten Wegmarke der Adresse
