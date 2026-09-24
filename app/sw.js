@@ -45,8 +45,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((antwort) => {
-          const kopie = antwort.clone();
-          caches.open(CACHE).then((cache) => cache.put('./index.html', kopie));
+          // Nur eine gültige Startseite ablegen – eine Fehlerseite darf die
+          // zwischengespeicherte Fassung für den Offline-Start nicht ersetzen.
+          if (antwort.ok && antwort.type === 'basic') {
+            const kopie = antwort.clone();
+            caches.open(CACHE).then((cache) => cache.put('./index.html', kopie));
+          }
           return antwort;
         })
         .catch(() => caches.match('./index.html').then((treffer) => treffer ?? Response.error())),
