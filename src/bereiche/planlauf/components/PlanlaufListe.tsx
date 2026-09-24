@@ -427,8 +427,8 @@ export function PlanlaufListe({
     const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
     const pct = fortschritt(run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
-    // Pläne eines Planverzeichnisses laufen in dessen Lauf mit; sie lassen
-    // sich unter dem Verzeichnis aufklappen.
+    // Pläne eines gebündelten Verzeichnisses stehen aufklappbar darunter –
+    // mitlaufend oder, wenn herausgelöst, mit eigenem Stand.
     const plaene =
       doc?.kind === 'verzeichnis' ? data.documents.filter((d) => d.parentId === doc.id) : [];
     // Die Pläne eines Verzeichnisses hängen an der eigenen Schaltfläche und

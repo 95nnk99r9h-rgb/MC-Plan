@@ -31,8 +31,8 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig');
   const faellig = fristen.filter((f) => f.ampel === 'faellig');
   const todos = eigeneTodos(data, ids);
-  // Pläne eines Planverzeichnisses laufen in dessen Lauf mit und erscheinen
-  // darum nicht als eigener Planlauf.
+  // Nur eigenständige Läufe zählen: Pläne eines gebündelten Verzeichnisses
+  // laufen in dessen Lauf mit (siehe hatEigenenPlanlauf).
   const laufend = eigenstaendigeLaeufe(data.documents, data.runs).filter(
     (r) => ids.includes(r.projectId) && istAktiv(r),
   );

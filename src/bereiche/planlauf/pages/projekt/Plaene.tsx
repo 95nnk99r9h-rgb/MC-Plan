@@ -154,7 +154,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
   /**
    * Maßgeblicher Lauf eines Eintrags: der laufende, sonst der abgeschlossene.
-   * Pläne eines Planverzeichnisses laufen im Lauf des Verzeichnisses mit.
+   * Pläne eines gebündelten Verzeichnisses zeigen den Lauf des Verzeichnisses.
    */
   const laufVon = (d: PlanDocument) => {
     const id = hatEigenenPlanlauf(d, data.documents) ? d.id : (d.parentId ?? d.id);

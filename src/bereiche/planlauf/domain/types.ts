@@ -274,9 +274,10 @@ export interface PlanDocument {
 }
 
 /**
- * Einträge mit eigenem Planlauf: Planverzeichnisse und Einzelpläne.
- * Planpakete sind reine Ordnungsmerkmale, Pläne eines Verzeichnisses laufen
- * im Lauf des Verzeichnisses mit.
+ * Einträge mit eigenem Planlauf: gebündelte Planverzeichnisse, Einzelpläne,
+ * Pläne eines Verzeichnisses mit Plänen einzeln und herausgelöste Pläne.
+ * Planpakete sind reine Ordnungsmerkmale; Pläne eines gebündelten
+ * Verzeichnisses laufen im Lauf des Verzeichnisses mit.
  */
 export function hatEigenenPlanlauf(
   doc: Pick<PlanDocument, 'kind' | 'parentId' | 'planlaufModus' | 'eigenerLauf'>,

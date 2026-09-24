@@ -315,9 +315,11 @@ export function kontaktFuerRolleUndGewerk(
 /**
  * Eigenständig geführte Planläufe.
  *
- * Pläne eines Planverzeichnisses laufen im Lauf des Verzeichnisses mit. Haben
- * sie – etwa weil sie erst später zugeordnet wurden – noch einen eigenen Lauf,
- * bleibt dieser erhalten, zählt aber nicht mehr als eigenständiger Planlauf.
+ * Maßgeblich ist hatEigenenPlanlauf: Pläne eines gebündelten Verzeichnisses
+ * laufen im Lauf des Verzeichnisses mit, ein Verzeichnis mit Plänen einzeln
+ * hat selbst keinen Lauf. Läufe, die nach dieser Regel nicht (mehr) zählen –
+ * etwa der Lauf eines später zugeordneten Plans –, bleiben erhalten, gelten
+ * aber nicht als eigenständig.
  */
 /**
  * Lauf, der nicht abgebrochen, sondern in eine andere Form überführt wurde:
