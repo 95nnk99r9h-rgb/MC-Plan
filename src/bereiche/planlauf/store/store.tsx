@@ -3,7 +3,7 @@
  * der den Bestand nach jeder Änderung lokal persistiert und die Soll-Termine
  * betroffener Planläufe neu berechnet.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
 import { seedData } from '../domain/seed';
@@ -82,12 +82,7 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => ladeDaten());
-  const ersterRender = useRef(true);
-
   useEffect(() => {
-    if (ersterRender.current) {
-      ersterRender.current = false;
-    }
     speichereDaten(data);
   }, [data]);
 
