@@ -613,8 +613,6 @@ a:hover { text-decoration: underline; }
 
 .progress { height: 5px; border-radius: 3px; background: rgba(120,120,128,0.16); overflow: hidden; min-width: 60px; }
 .progress > div { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.3s ease; }
-.progress.green > div { background: var(--green); }
-.progress.red > div { background: var(--red); }
 
 /* ------------------------------------------------------------------ */
 /* Prozesskette / Zeitstrahl                                           */
@@ -672,6 +670,24 @@ a:hover { text-decoration: underline; }
 .chev-btn { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex: 0 0 20px; padding: 0; margin: 0; border: none; border-radius: 6px; background: none; color: var(--text-tertiary); cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
 .chev-btn:hover { background: rgba(0, 0, 0, 0.05); color: var(--text-primary); }
 .chev-btn.offen { transform: rotate(90deg); }
+/*
+ * Der Pfeil zum Aufklappen liegt links vor Symbol und Titel, damit
+ * Planverzeichnisse und Pläne auf derselben Höhe beginnen. 20 px Schaltfläche
+ * und 9 px Abstand ergeben die 29 px, um die er vorgezogen wird.
+ */
+.chev-vorn { margin-left: -29px; }
+.chev-vorn.offen { transform: rotate(90deg); }
+/* Auswahlzeile beim Wieder-Bündeln: Haken, Plan und aktueller Stand */
+.checkbox.buendeln-plan {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.checkbox.buendeln-plan:hover { background: var(--bg-hover); }
 .table tr.unterzeile td { background: rgba(0, 0, 0, 0.015); }
 /* Verworfene Fassungen (abgebrochener Lauf) bleiben grau sichtbar */
 /*
@@ -816,89 +832,153 @@ a:hover { text-decoration: underline; }
   height: 100%;
   overflow-y: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 20px;
+  flex-direction: column;
 }
 
-.start-inner { width: 100%; max-width: 680px; }
+.start-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
 
+/*
+ * Die Kopfzeile steht am Seitenrand, die Kacheln stehen mittig. Marke und
+ * Wortmarke sitzen an derselben Stelle und in derselben Groesse wie in einem
+ * Bereich: die Marke wie .sidebar-brand am Kopf der Menueleiste, die Wortmarke
+ * wie .topbar-logo am rechten Rand der Kopfleiste.
+ */
 .start-kopf {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 26px;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 auto;
+  padding: 20px 28px 24px 20px;
 }
 .start-kopf-text { flex: 1; min-width: 0; }
-.start-kopf-text h1 { font-size: 26px; margin: 0; }
-.start-kopf-text p { margin: 2px 0 0; color: var(--text-secondary); }
-.start-logo { flex: none; }
+.start-kopf-text h1 { margin: 0; font-size: 15px; font-weight: 600; }
+.start-kopf-text p { margin: 0; font-size: 11.5px; color: var(--text-tertiary); }
+.start-logo { flex: none; align-self: flex-start; margin-top: 1px; }
 
-.start-kacheln { display: grid; gap: 12px; }
+/* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch. */
+.start-kacheln {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px;
+  align-items: stretch;
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+}
 
 .bereich-kachel {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  padding: 18px 20px;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
   border: none;
   background: var(--bg-elev);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  /* Eine Haarlinie als Rand: der obere Bildteil liegt farblich dicht am
+     Seitenhintergrund und verliefe sonst mit ihm. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--separator-strong);
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.bereich-kachel:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.bereich-kachel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--separator-strong);
+}
 .bereich-kachel:active { transform: translateY(0); }
 
-.bereich-kachel-icon {
+/* Oberer Bildteil mit dem Piktogramm des Bereichs */
+.bereich-kachel-bild {
+  position: relative;
   flex: none;
+  height: 186px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius);
-  background: var(--accent-soft);
+  background: var(--fill-gruppe);
   color: var(--accent);
 }
+.bereich-kachel:hover .bereich-kachel-bild { background: var(--accent-soft); }
 
-.bereich-kachel-text { flex: 1; min-width: 0; display: block; }
-.bereich-kachel-text strong { display: block; font-size: 16px; font-weight: 600; }
-.bereich-kachel-sub { display: block; font-size: 12.5px; color: var(--text-tertiary); }
-.bereich-kachel-text-lang {
-  display: block;
-  margin-top: 6px;
-  font-size: 13px;
+.bereich-kachel-marke {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
-.bereich-kachel-pfeil { flex: none; color: var(--text-tertiary); display: flex; }
+.bereich-kachel-inhalt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 14px;
+}
+.bereich-kachel-titel { font-size: 16px; font-weight: 600; }
+.bereich-kachel-sub {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.bereich-kachel-text { margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
+.bereich-kachel-pfeil {
+  margin-top: auto;
+  padding-top: 14px;
+  align-self: flex-end;
+  display: flex;
+  color: var(--text-tertiary);
+}
+.bereich-kachel:hover .bereich-kachel-pfeil { color: var(--accent); }
 
-.start-fuss { margin: 22px 2px 0; font-size: 12px; color: var(--text-tertiary); }
+.start-fuss {
+  margin: auto 0 0;
+  padding: 26px 20px 20px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
 
+/* Bereichswechsel am Fuss der Menueleiste */
 .bereich-wechsel {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px 0;
-  border: none;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--separator-strong);
+  border-radius: 7px;
   background: none;
   font: inherit;
-  font-size: 12px;
-  color: var(--text-tertiary);
+  font-size: 12.5px;
+  color: var(--text-secondary);
   cursor: pointer;
 }
-.bereich-wechsel:hover { color: var(--accent); }
+.bereich-wechsel:hover { background: var(--bg-hover); color: var(--accent); }
 
-@media (max-width: 640px) {
-  .start-kopf { flex-wrap: wrap; }
+@media (max-width: 720px) {
+  .start-kopf { padding: 16px 16px 20px; }
+  .start-kacheln { max-width: none; padding: 0 16px; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .bereich-kachel-bild { height: 128px; }
+  .bereich-kachel-bild svg { width: 46px; height: 46px; }
   .start-logo { display: none; }
-  .bereich-kachel { padding: 14px 16px; gap: 12px; }
+  .start-fuss { padding: 20px 16px 16px; text-align: left; }
 }
 
 /* ------------------------------------------------------------------ */

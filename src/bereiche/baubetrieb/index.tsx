@@ -31,7 +31,6 @@ function Platzhalter() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <BereichWechsel />
         <button
           type="button"
           className="sidebar-brand"
@@ -55,6 +54,7 @@ function Platzhalter() {
             Farbmodus für Rot-Grün-Sehschwäche
           </label>
           Daten werden lokal im Browser gespeichert.
+          <BereichWechsel />
         </div>
       </aside>
 

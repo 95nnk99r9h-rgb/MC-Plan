@@ -8,14 +8,16 @@ MC Plan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildsc
 * **Baubetriebsplanung** – angelegt, aber noch ohne Inhalt.
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
-Browser, eigene Einstellungen, eigener Router. Alles Weitere in dieser Beschreibung betrifft das
-Planlaufmanagement.
+Browser, eigene Einstellungen, eigener Router. Der Startbildschirm zeigt beide als Kacheln; in einem
+Bereich führt **Bereich wechseln** unten in der Seitenleiste zurück. Alles Weitere in dieser
+Beschreibung betrifft das Planlaufmanagement.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
 (`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
 
 Die Software ist auf die Nutzung durch mehrere Personen ausgelegt – alle sehen alle Projekte, und
-jede Person stellt in der Seitenleiste ein, wer sie ist (Rolle im Projekt: **PLM**). Solange die
+jede Person stellt in der Seitenleiste ein, wer sie ist (eigene Funktion im Projekt:
+**Planlaufmanagement**). Solange die
 Daten lokal im Browser liegen, arbeitet allerdings jeder Arbeitsplatz auf einem eigenen Stand; ein
 gemeinsamer Datenbestand setzt den nächsten Schritt – die Anbindung einer Datenbank – voraus. Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
 der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
@@ -39,43 +41,54 @@ npm run preview  # Produktionsbuild lokal ansehen
 npm run typecheck
 ```
 
-Beim ersten Start wird ein Demodatenbestand mit zwei Projekten, Adressbüchern, Plänen und
-laufenden Planläufen geladen. Über **Zurücksetzen** (unten in der Seitenleiste) lässt sich dieser
-Stand jederzeit wiederherstellen, über **Export** der gesamte Bestand als JSON sichern.
+Beim ersten Start wird ein Demodatenbestand mit einem Projekt samt Funktionen, Besetzungen, Plänen
+und laufenden Planläufen geladen. Über **Zurücksetzen** (unten in der Seitenleiste) lässt sich
+dieser Stand jederzeit wiederherstellen, über **Sicherung** der gesamte Bestand als JSON sichern.
 
 ## Veröffentlichen (GitHub Pages)
 
-**Einmalig einzustellen: Settings → Pages → Build and deployment → Source: „GitHub Actions".**
-Ohne diese Umstellung bleibt die Seite weiß – und zwar aus folgendem Grund:
+Veröffentlicht wird über [`.github/workflows/pages.yml`](.github/workflows/pages.yml). Der Workflow
+baut bei jedem Push auf `main` (`npm ci`, `npm run build`) und legt den Build an drei Stellen ab:
 
-Steht die Quelle auf „Deploy from a branch", baut GitHub den **Repository-Stamm mit Jekyll** und
-liefert die dortige `index.html` aus. Das ist aber die Einstiegsdatei für die Entwicklung; sie
-verweist auf `/src/main.tsx`, was ein Browser nicht ausführen kann. Dieser Jekyll-Lauf startet bei
-jedem Push zusätzlich zum Workflow und überschreibt dessen Ergebnis, weil er später fertig wird.
+1. als **GitHub-Pages-Bereitstellung** – greift bei **Settings → Pages → Build and deployment →
+   Source: „GitHub Actions“**,
+2. im Branch **`gh-pages`** (nur der Build, ohne Verlauf) – für „Deploy from a branch“ mit
+   `gh-pages` und `/ (root)`,
+3. im Ordner **`app/`** auf `main` – für „Deploy from a branch“ mit `main` und `/ (root)`.
 
-Nach der Umstellung veröffentlicht ausschließlich
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml): Der Workflow baut bei jedem Push auf
-`main` und stellt `dist/` bereit. Die Seite erscheint dann unter
-`https://mailander-consult-gmbh.github.io/MC-Plan/`. Bei Pull Requests prüft und baut derselbe
-Workflow nur, veröffentlicht aber nichts.
+Bei Pull Requests baut der Workflow nur (einschließlich Typprüfung) und veröffentlicht nichts.
+Die Seite erscheint unter `https://mailander-consult-gmbh.github.io/MC-Plan/`.
 
-Hilfen, falls die Einstellung nicht geändert werden kann oder soll:
+Zu Variante 3: GitHub liefert dabei den Zweig selbst aus. Die `index.html` im Stamm ist die
+Einstiegsdatei für die Entwicklung und verweist auf `/src/main.tsx`, das ein Browser nicht ausführen
+kann. Ihr kleines Skript wechselt deshalb nach 1,5 Sekunden auf **`app/`**, wo der eingecheckte Build
+liegt (direkt erreichbar unter `…/MC-Plan/app/`). Fehlt dieser Build, erscheint statt einer weißen
+Seite ein Hinweis. Der fertige Build selbst leitet nie um – auch nicht, wenn er langsam lädt. `app/` wird auf `main` vom Workflow erneuert und nicht von Hand gepflegt; nur wer
+einen anderen Zweig über Pages ansehen will, baut dort selbst:
 
-* Der Workflow legt denselben Build zusätzlich im Branch **`gh-pages`** ab. Damit genügt es auch,
-  unter „Deploy from a branch" den Branch `gh-pages` und den Ordner `/ (root)` zu wählen.
-* Außerdem schreibt er den Build in den Ordner **`app/`** auf `main`. Wird versehentlich doch der
-  Quellcode ausgeliefert, wechselt die Startseite nach 1,5 Sekunden dorthin; fehlt auch dieser
-  Build, erscheint statt einer weißen Seite ein Hinweis mit genau diesem Lösungsweg. Der Ordner
-  wird nicht von Hand gepflegt.
+```bash
+npm run build
+rm -rf app && cp -r dist app
+```
 
-Die Ablage in `gh-pages` und `app/` braucht Schreibrechte für den Workflow (Settings → Actions →
-General → Workflow permissions) und scheitert, wenn `main` gegen direkte Pushes geschützt ist –
-der Workflow meldet das dann als Warnung. Für private Repositories setzt GitHub Pages einen
-kostenpflichtigen GitHub-Plan voraus.
+Die Quelle muss auf „GitHub Actions“, `gh-pages` oder `main` stehen. Zeigt „Deploy from a branch“
+auf einen anderen Zweig, liefert GitHub dessen Stand aus und überschreibt damit auch die
+Bereitstellung des Workflows. Mit „Deploy from a branch“ auf `main` laufen beide Wege parallel –
+es gilt, was zuletzt fertig wird; eindeutig ist daher „GitHub Actions“.
+
+Die Schreibrechte für die Ablage in `gh-pages` und `app/` fordert der Workflow selbst an
+(`permissions: contents: write` im Job `ablage`); die Voreinstellung unter Settings → Actions →
+General → Workflow permissions muss dafür nicht geändert werden. Ist `main` gegen direkte Pushes
+geschützt, scheitert nur die Ablage in `app/` – der Workflow meldet das als Warnung. Wird der Push
+nach `gh-pages` abgewiesen, schlägt der Lauf fehl. Für private Repositories setzt GitHub Pages
+einen kostenpflichtigen GitHub-Plan voraus.
+
+Ändert sich die Hülle (Titel, Symbole, Manifest), zusätzlich den Cache-Namen in `public/sw.js`
+hochzählen, damit installierte Fassungen die neuen Dateien laden.
 
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
-Ohne diese Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/MC-Plan/` führt das
-ebenfalls zu einer weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/planlauf/fristen`), daher
+Ohne diese Einstellung verweisen die Dateien auf `/assets/…` und die Seite bleibt unter einem
+Unterverzeichnis wie `…/MC-Plan/` weiß. Die Navigation arbeitet mit Hash-Adressen (`#/planlauf/fristen`), daher
 funktionieren Direktaufrufe und das Neuladen ohne zusätzliche Serverregeln.
 
 ## Als App installieren (PWA)
@@ -88,7 +101,8 @@ ohne Netzverbindung – die Daten liegen ohnehin lokal im Browser.
 * **Desktop (Chrome/Edge):** Installationssymbol in der Adressleiste
 
 Enthalten sind `manifest.webmanifest`, App-Symbole (192/512 px, maskable und Apple-Touch-Icon)
-sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen und
+sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
+gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien kommen direkt aus
 dem Zwischenspeicher. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
@@ -101,7 +115,8 @@ Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar blei
 
 ### Projekte
 Anlage und Pflege von Projekten (Projektnummer, Name, Status, Beschreibung). Beim Anlegen werden
-die Standardrollen und die E-Mail-Vorlagen übernommen.
+die projektübergreifenden Funktionen als Projektfunktionen übernommen. Die E-Mail-Texte gelten
+projektübergreifend und werden unter **Vorlagen** in der Seitenleiste gepflegt.
 
 ### Funktionen und Gewerke
 Im übergeordneten Reiter **Funktionen** werden die projektübergreifenden Funktionen gepflegt –
@@ -150,11 +165,12 @@ werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST
 freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
 der Soll-Termin für den Eingang und eine Bemerkung geführt.
 
-Pläne lassen sich einem **Planpaket oder Planverzeichnis unterordnen**. Untergeordnete Pläne
-durchlaufen keinen eigenen Planlauf – maßgeblich ist der Lauf des übergeordneten Eintrags; die
-Liste weist sie entsprechend aus.
+Pläne lassen sich einem **Planpaket oder Planverzeichnis unterordnen**. Planpakete sind ein reines
+Ordnungsmerkmal ohne eigenen Planlauf. Wie die Pläne eines **Planverzeichnisses** laufen, legt das
+Verzeichnis fest (siehe nächster Abschnitt). In der Planliste stehen die Pläne eingerückt unter
+ihrem Verzeichnis und lassen sich am Pfeil zwischen Nummer und Symbol zuklappen.
 
-**Zu jedem eigenständigen Eintrag gehört genau ein Planlauf.** Er entsteht zusammen mit dem Eintrag:
+**Zu jedem Eintrag mit eigenem Lauf gehört genau ein laufender Planlauf.** Er entsteht zusammen mit dem Eintrag:
 Im selben Dialog werden der Workflow gewählt und seine Schritte für diesen Lauf angepasst. Die Liste
 zeigt Stammdaten und Ablauf nebeneinander – aktueller Schritt, Verantwortlicher, Frist und
 Fortschritt – und lässt sich über die Spaltenüberschriften sortieren. Ein Klick auf die Zeile öffnet
@@ -166,8 +182,35 @@ bzw. **Name PlanVZ** beim Paket und Verzeichnis, wo statt *Index* die **Ausgabe*
 **Farbige Bezeichnungen:** Steht in einem Planlauf noch der Schritt **Eingang PLM** aus, ist der
 Plan angekündigt, aber noch nicht eingegangen – seine Bezeichnung steht in Planliste und
 Projektübersicht **gelb**, in der Übersicht trägt er den Status **Angekündigt** (nach ihm lässt sich
-auch filtern und sortieren), in der Planliste das Kennzeichen *Angekündigt*. Abgeschlossene
+auch filtern und sortieren), in der Planliste das Kennzeichen *Angekündigt*. Ist der Eingang
+überfällig, lautet der Status **Überfällig**; die Bezeichnung bleibt gelb. Abgeschlossene
 Planläufe stehen in **Grün**, abgebrochene grau.
+
+### Planverzeichnisse: gebündelt oder Pläne einzeln
+Jedes Planverzeichnis läuft auf eine von zwei Arten:
+
+* **Gebündelt** (Vorgabe): Das Verzeichnis durchläuft den Planlauf, seine Pläne laufen darin mit.
+* **Pläne einzeln**: Jeder Plan hat einen eigenen Planlauf; das Verzeichnis ordnet sie nur und
+  zeigt – wie ein Planpaket – den aus ihnen zusammengefassten Fortschritt und Status.
+
+Gewählt wird mit dem Haken **„Pläne einzeln durch den Planlauf führen“** im Dialog des Verzeichnisses,
+solange weder das Verzeichnis noch seine Pläne einen Lauf haben. Danach geht es über Nachträge weiter:
+
+* **Herauslösen …** – ein Plan erhält einen eigenen Lauf, das Verzeichnis läuft für die übrigen
+  gebündelt weiter.
+* **Alle Pläne einzeln weiterführen …** – jeder Plan ohne eigenen Lauf erhält einen; der gebündelte
+  Lauf endet als „aufgeteilt“.
+* **Pläne wieder bündeln …** – die angekreuzten Pläne mit eigenem Lauf kehren in einen gemeinsamen
+  Verzeichnislauf zurück, nicht angekreuzte behalten ihren eigenen. Läuft das Verzeichnis noch,
+  übernehmen sie dessen Stand; ein Plan, der schon weiter war, fällt dabei zurück (der Dialog weist
+  darauf hin). Ist das Verzeichnis aufgeteilt, entsteht ein neuer Verzeichnislauf mit dem Stand
+  eines der angekreuzten Pläne – vorgeschlagen ist der am wenigsten weit gediehene.
+
+Beim Herauslösen und Aufteilen übernimmt der Plan den Stand des Verzeichnislaufs: erledigte
+Schritte bleiben erledigt, Start und Termine laufen weiter. Aufgeteilte bzw. wieder gebündelte Läufe
+gelten nicht als Abbruch. Die Nachträge stehen im Dialog des Verzeichnisses bzw. Plans in der
+Planliste, in der Karte **Pläne dieses Verzeichnisses** des Planlaufs und in der Planlaufliste
+des Projekts.
 
 **Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
 *Art · Plancodierung/Name Planpaket / Name Plan VZ · Index/Ausgabe · Titel · Gewerk ·
@@ -176,7 +219,12 @@ Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Planlauf gleich
 Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
 
 ### Planlaufliste im Projekt
-Je Eintrag steht in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
+Je Eintrag steht in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist. Die Liste
+ist nach Planpaketen gegliedert; Planverzeichnisse lassen sich am Pfeil vor Symbol und Titel
+aufklappen (zunächst zugeklappt). Darunter stehen die Pläne – mitlaufend mit **Herauslösen …**,
+herausgelöst mit eigenem Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als
+zusammenfassende Zeile mit **Bündeln …**. Abgebrochene Läufe stehen gesammelt am Ende unter einer
+eigenen, zunächst zugeklappten Zeile **Abgebrochen**.
 
 Die Übersicht lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung, Gewerk,
 Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status (überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
@@ -191,7 +239,10 @@ Die **Suche** über Nummer, Titel und Schritt steht oben in der Kartenzeile nebe
 daneben erscheint bei gesetzten Filtern *Filter zurücksetzen*.
 
 ### Zuständigkeiten
-Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Rollen & Funktionen** des Projekts. Die
+Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Rollen & Funktionen** des Projekts.
+Gemeint ist stets die Funktion des Gewerks des Plans – ersatzweise die übergreifende gleichen
+Namens. Darum bietet die Auswahl beim Anpassen eines Schritts nur die Funktionen dieses Gewerks und
+die übergreifenden an, jede einmal. Die
 Zuordnung wird laufend nachgezogen: Wird eine Person erst nach dem Start eines Planlaufs eingetragen
 oder wechselt sie während des Projekts, gilt die neue Besetzung sofort auch in laufenden Planläufen.
 Bereits erledigte Schritte behalten ihre Person, ebenso Schritte, in denen im Planlauf eine Person
@@ -236,8 +287,8 @@ mit Rolle (z.B. Erdungsprüfer), Frist und Nachweis. Die Einfügeposition wird a
 Verlauf gewählt; die Verkettung wird dabei richtig gesetzt, auch hinter Entscheidungen.
 
 ### Planläufe (Soll-/Ist-Termine)
-Ein Planlauf ist die laufende Instanz einer Prozesskette für einen Plan, ein Paket oder ein
-Verzeichnis. Beim Start werden die Schritte der Vorlage kopiert und lassen sich **für diesen Lauf**
+Ein Planlauf ist die laufende Instanz einer Prozesskette für einen Plan oder ein gebündeltes
+Planverzeichnis. Beim Start werden die Schritte der Vorlage kopiert und lassen sich **für diesen Lauf**
 noch ergänzen, ändern oder entfernen – **individuelle Abweichungen** wirken deshalb nur auf den
 jeweiligen Lauf und sind als solche gekennzeichnet.
 
@@ -261,8 +312,9 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
   Planlauf beginnt mit denselben Schritten von vorn.
 * Ein abgebrochener Lauf ist **nicht mehr zu bearbeiten**: In der Projektübersicht steht seine Zeile
-  ausgegraut, ohne aktuellen Schritt, Fortschritt und Schaltflächen – stattdessen in Grau
-  „Abgebrochen am …“ mit dem Zusatz *ersatzlos abgebrochen* bzw. *ersetzt durch Index C*. Er lässt
+  gesammelt am Ende unter **Abgebrochen**, ausgegraut, ohne aktuellen Schritt, Fortschritt und
+  Schaltflächen – stattdessen mit seinem eigenen Index und in Grau „Abgebrochen am …“ mit dem
+  Zusatz *ersatzlos abgebrochen* bzw. *ersetzt durch Index C*. Er lässt
   sich weiterhin zum Nachschlagen öffnen, bietet dort aber keine Aktionen mehr und erscheint nicht
   in der Fristenliste. In der **Planliste** trägt der Eintrag den entsprechenden Zusatz
   (`Index B → C` bzw. `abgebrochen`).
@@ -303,10 +355,14 @@ Mustermann“), die Nachfrage nach E-Mails und der **Farbmodus für eine Rot-Gr�
 stellt Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot dar und erhöht die Kontraste.
 
 ### Projekteinstellungen
-Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage, Absenderangaben sowie die
-**E-Mail-Vorlagen** (Betreff und Text) mit einer Übersicht aller verfügbaren Platzhalter.
+Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie der **Export**. Die
+**E-Mail-Texte** (Betreff und Text, mit Übersicht der Platzhalter) werden projektübergreifend unter
+**Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
 
 ## Aufbau des Codes
+
+Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
+veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md).
 
 MC Plan besteht aus zwei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
 seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen eigenen Router mit;
@@ -321,6 +377,7 @@ src/
     Start.tsx    Startbildschirm mit den Bereichskacheln
     bereiche.ts  Verzeichnis der Bereiche
     router.ts    #/ · #/planlauf/… · #/baubetrieb/…
+    BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
     icons.tsx    Strichsymbole
@@ -339,15 +396,17 @@ src/
       domain/    Fachlogik ohne UI-Bezug
         types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
         engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
+        abschluss.ts Statuswechsel eines Schritts samt Nachweis
         email.ts     Platzhalter und Aufbereitung der Vorlagen
         export.ts    Kurz- und Langfassung für Excel und PDF
+        importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
       store/
         storage.ts   Persistenz (localStorage) – Austauschpunkt für eine spätere Datenbank
         store.tsx    Zentraler Zustand, alle Schreibzugriffe
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf
-      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Projektreiter)
-      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe …)
+      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
+      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, BuendelnDialog …)
     baubetrieb/  Bereich „Baubetriebsplanung“ – angelegt, noch ohne Inhalt
 ```
 
@@ -357,9 +416,9 @@ beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 ## Gestaltung
 
 Helles Erscheinungsbild in Anlehnung an Apple: Systemschriftart (SF Pro / `-apple-system`),
-zurückhaltende Flächen auf `#f5f5f7`, weiße Karten mit weichen Radien und feinen Schatten,
-Systemblau `#0071e3` als Akzent, transluzente Seitenleiste und Kopfzeile, Segmented Controls und
-Pill-Buttons. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar.
+zurückhaltende Flächen auf `#f5f5f7`, weiße Karten mit weichen Radien und feinen Schatten, die
+Hausfarbe von Mailänder Consult `#24456e` als Akzent (auch für alle Fortschrittsbalken),
+transluzente Seitenleiste und Kopfzeile, Segmented Controls und Pill-Buttons. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar.
 
 ## Nächste Schritte (Ausblick)
 

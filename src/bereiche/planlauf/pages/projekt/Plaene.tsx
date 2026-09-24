@@ -6,11 +6,13 @@
  * den Soll-Termin des Eingangs. Der Stand der Planläufe steht in der
  * Projektübersicht, Planpakete werden auf einer eigenen Seite gepflegt.
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   aktuellerSchritt,
   gewerkeFuerProjekt,
+  laufUeberfuehrt,
   lfdNummern,
+  funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
   stepsAusTemplate,
 } from '../../domain/engine';
@@ -23,6 +25,7 @@ import {
   SCHRITT_EINGANG,
   hatEigenenPlanlauf,
   istEingangPLM,
+  verzeichnisGebuendelt,
   type DocumentKind,
   type ID,
   type PlanDocument,
@@ -34,6 +37,7 @@ import { useToast } from '../../../../shared/toast';
 import { DocKindIcon } from '../../components/common';
 import { SchrittListe } from '../Workflows';
 import { PlaeneImport } from './PlaeneImport';
+import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import {
   Callout,
   Card,
@@ -64,6 +68,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const [absteigend, setAbsteigend] = useState(false);
   const [dialog, setDialog] = useState<{ doc?: PlanDocument } | null>(null);
   const [importOffen, setImportOffen] = useState(false);
+  /** Zugeklappte Planverzeichnisse – in der Planliste sind sie zunächst offen. */
+  const [zugeklappt, setZugeklappt] = useState<string[]>([]);
   // Planpakete werden auf einer eigenen Seite gepflegt
   const alle = data.documents.filter((d) => d.projectId === project.id && d.kind !== 'paket');
   const pakete = data.documents.filter((d) => d.projectId === project.id && d.kind === 'paket');
@@ -113,6 +119,18 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     (a, b) => schluessel(a).localeCompare(schluessel(b), 'de', { numeric: true }) * (absteigend ? -1 : 1),
   );
 
+  /**
+   * Pläne eines Planverzeichnisses stehen eingerückt unter ihm und lassen sich
+   * am Dreieck zuklappen. Ist das Verzeichnis selbst ausgefiltert, steht der
+   * Plan wie bisher für sich in der Liste.
+   */
+  const kinderVon = (id: string) => zeilen.filter((d) => d.kind === 'plan' && d.parentId === id);
+  const obereEbene = zeilen.filter(
+    (d) => !(d.kind === 'plan' && d.parentId && zeilen.some((x) => x.id === d.parentId)),
+  );
+  const klappen = (id: string) =>
+    setZugeklappt((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+
   const sortieren = (feld: SortFeld) => {
     if (feld === sortFeld) setAbsteigend((a) => !a);
     else {
@@ -136,10 +154,10 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
   /**
    * Maßgeblicher Lauf eines Eintrags: der laufende, sonst der abgeschlossene.
-   * Pläne eines Planverzeichnisses laufen im Lauf des Verzeichnisses mit.
+   * Pläne eines gebündelten Verzeichnisses zeigen den Lauf des Verzeichnisses.
    */
   const laufVon = (d: PlanDocument) => {
-    const id = hatEigenenPlanlauf(d) ? d.id : (d.parentId ?? d.id);
+    const id = hatEigenenPlanlauf(d, data.documents) ? d.id : (d.parentId ?? d.id);
     const laeufe = data.runs.filter((r) => r.documentId === id && r.status !== 'abgebrochen');
     return laeufe.find((r) => r.status === 'laufend') ?? laeufe[0];
   };
@@ -164,7 +182,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
    * Abbruch, solange kein weiterer Lauf gestartet wurde.
    */
   const abbruchZusatz = (d: PlanDocument) => {
-    const laeufe = data.runs.filter((r) => r.documentId === d.id);
+    // Aufgeteilte bzw. wieder gebündelte Läufe sind kein Abbruch des Eintrags
+    const laeufe = data.runs.filter((r) => r.documentId === d.id && !laufUeberfuehrt(r));
     const ersetzt = [...laeufe]
       .reverse()
       .find((r) => r.status === 'abgebrochen' && r.abbruchArt === 'neuer_index');
@@ -188,6 +207,115 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
       };
     }
     return null;
+  };
+
+  /** Eine Zeile der Planliste; Pläne eines Verzeichnisses stehen eingerückt. */
+  const zeile = (doc: PlanDocument, eingerueckt = false) => {
+    const kinder = doc.kind === 'verzeichnis' ? kinderVon(doc.id) : [];
+    const offen = !zugeklappt.includes(doc.id);
+    return (
+      <tr
+        key={doc.id}
+        className={`clickable ${eingerueckt ? 'unterzeile' : ''} ${
+          abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
+        }`}
+        onClick={() => setDialog({ doc })}
+        title={
+          abgeschlossen(doc)
+            ? 'Planlauf abgeschlossen'
+            : wartetAufEingang(doc)
+              ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
+              : undefined
+        }
+      >
+        <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
+        {/* Der Pfeil steht zwischen Nummer und Symbol; Symbol und Titel eines
+            untergeordneten Plans rücken gemeinsam ein – wie in der Übersicht. */}
+        <td className="small" style={{ paddingLeft: eingerueckt ? 60 : 36 }}>
+          <span className="row" style={{ gap: 9 }}>
+            {kinder.length > 0 ? (
+              <button
+                type="button"
+                className={`chev-btn chev-vorn ${offen ? 'offen' : ''}`}
+                title={offen ? 'Pläne ausblenden' : 'Pläne anzeigen'}
+                aria-label="Pläne des Verzeichnisses anzeigen"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  klappen(doc.id);
+                }}
+              >
+                <Icon name="chevron" size={13} />
+              </button>
+            ) : null}
+            <DocKindIcon kind={doc.kind} />
+            {DOCUMENT_KIND_LABEL[doc.kind]}
+          </span>
+        </td>
+        <td style={{ paddingLeft: eingerueckt ? 38 : undefined }}>
+          <span className="row" style={{ gap: 9, alignItems: 'flex-start' }}>
+            <span style={{ minWidth: 0 }}>
+              <span className="num">
+                {doc.nummer}
+                {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
+              </span>
+              <div>
+                <strong>{doc.titel}</strong>
+                {kinder.length > 0 ? (
+                  <span className="small tertiary">
+                    {' '}
+                    · {kinder.length} {kinder.length === 1 ? 'Plan' : 'Pläne'}
+                  </span>
+                ) : null}
+                {wartetAufEingang(doc) ? (
+                  <span className="badge gelb" style={{ marginLeft: 6 }} title={`„${SCHRITT_EINGANG}“ steht noch aus`}>
+                    Angekündigt
+                  </span>
+                ) : null}
+                {doc.kind === 'verzeichnis' && !verzeichnisGebuendelt(doc) ? (
+                  <span className="badge zusatz" title="Jeder Plan dieses Verzeichnisses hat einen eigenen Planlauf">
+                    Pläne einzeln
+                  </span>
+                ) : null}
+                {doc.kind === 'plan' &&
+                doc.parentId &&
+                doc.eigenerLauf &&
+                verzeichnisGebuendelt(alle.find((x) => x.id === doc.parentId) ?? {}) ? (
+                  <span className="badge zusatz" title="Aus dem gebündelten Lauf des Verzeichnisses herausgelöst">
+                    eigener Lauf
+                  </span>
+                ) : null}
+                {(() => {
+                  const zusatz = abbruchZusatz(doc);
+                  return zusatz ? (
+                    <span className="badge zusatz" title={zusatz.titel}>
+                      {zusatz.text}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </span>
+          </span>
+        </td>
+        <td className="small muted">{doc.gewerk || '–'}</td>
+        <td className="small muted col-optional">{verzeichnisName(doc) || '–'}</td>
+        <td className="small muted col-optional">{paketName(doc) || '–'}</td>
+        <td className="small">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
+        <td className="actions">
+          <button
+            type="button"
+            className="btn-icon"
+            aria-label="Eintrag bearbeiten"
+            title="Stammdaten bearbeiten"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDialog({ doc });
+            }}
+          >
+            <Icon name="bearbeiten" size={15} />
+          </button>
+        </td>
+      </tr>
+    );
   };
 
   return (
@@ -249,69 +377,13 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 </tr>
               </thead>
               <tbody>
-                {zeilen.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className={`clickable ${
-                      abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
-                    }`}
-                    onClick={() => setDialog({ doc })}
-                    title={
-                      abgeschlossen(doc)
-                        ? 'Planlauf abgeschlossen'
-                        : wartetAufEingang(doc)
-                          ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
-                          : undefined
-                    }
-                  >
-                    <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
-                    <td className="small">
-                      <span className="row" style={{ gap: 8 }}>
-                        <DocKindIcon kind={doc.kind} />
-                        {DOCUMENT_KIND_LABEL[doc.kind]}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="num">
-                        {doc.nummer}
-                        {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
-                      </span>
-                      <div>
-                        <strong>{doc.titel}</strong>
-                        {wartetAufEingang(doc) ? (
-                          <span className="badge gelb" style={{ marginLeft: 6 }} title={`„${SCHRITT_EINGANG}“ steht noch aus`}>
-                            Angekündigt
-                          </span>
-                        ) : null}
-                        {(() => {
-                          const zusatz = abbruchZusatz(doc);
-                          return zusatz ? (
-                            <span className="badge zusatz" title={zusatz.titel}>
-                              {zusatz.text}
-                            </span>
-                          ) : null;
-                        })()}
-                      </div>
-                    </td>
-                    <td className="small muted">{doc.gewerk || '–'}</td>
-                    <td className="small muted col-optional">{verzeichnisName(doc) || '–'}</td>
-                    <td className="small muted col-optional">{paketName(doc) || '–'}</td>
-                    <td className="small">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
-                    <td className="actions">
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        aria-label="Eintrag bearbeiten"
-                        title="Stammdaten bearbeiten"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDialog({ doc });
-                        }}
-                      >
-                        <Icon name="bearbeiten" size={15} />
-                      </button>
-                    </td>
-                  </tr>
+                {obereEbene.map((doc) => (
+                  <Fragment key={doc.id}>
+                    {zeile(doc)}
+                    {doc.kind === 'verzeichnis' && !zugeklappt.includes(doc.id)
+                      ? kinderVon(doc.id).map((plan) => zeile(plan, true))
+                      : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -349,9 +421,11 @@ function PlanDialog({
   onClose: () => void;
   onLaufGestartet: (runId: ID) => void;
 }) {
-  const { data, addDocument, updateDocument, deleteDocument, addRun } = useStore();
+  const { data, addDocument, updateDocument, deleteDocument, addRun, planHerausloesen, verzeichnisAufteilen } =
+    useStore();
   const toast = useToast();
   const [loeschen, setLoeschen] = useState(false);
+  const [nachtrag, setNachtrag] = useState<'herausloesen' | 'aufteilen' | 'buendeln' | null>(null);
 
   const vorlagen = data.templates.filter((t) => t.projectId === null || t.projectId === project.id);
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
@@ -370,18 +444,53 @@ function PlanDialog({
     eingangSoll: doc?.eingangSoll ?? '',
     datum: doc?.datum ?? '',
     bemerkung: doc?.bemerkung ?? '',
+    planlaufModus: doc?.planlaufModus ?? 'gebuendelt',
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
-
-  // Pläne eines Verzeichnisses laufen im Planlauf des Verzeichnisses mit
-  const untergeordnet = form.kind === 'plan' && form.parentId !== null;
-  const braucheLauf = !vorhandenerLauf && !untergeordnet;
 
   /** Planverzeichnisse des Projekts – mögliche „Eltern“ eines Plans. */
   const moeglicheEltern = data.documents.filter(
     (d) => d.projectId === project.id && d.id !== doc?.id && d.kind === 'verzeichnis',
   );
+
+  // Plan eines Verzeichnisses: gehört automatisch zu dessen Planpaket
+  const untergeordnet = form.kind === 'plan' && form.parentId !== null;
+  const eltern = moeglicheEltern.find((d) => d.id === form.parentId);
+  /** Eigener, nicht abgebrochener Lauf – den behält ein Plan auch beim Verschieben. */
+  const eigenerAktiverLauf = doc
+    ? data.runs.find((r) => r.documentId === doc.id && r.status !== 'abgebrochen')
+    : undefined;
+  // Ein Plan läuft im Lauf seines Verzeichnisses mit, wenn dieses gebündelt ist
+  // und der Plan nicht herausgelöst wurde.
+  const laeuftMit =
+    untergeordnet &&
+    !eigenerAktiverLauf &&
+    !doc?.eigenerLauf &&
+    (eltern ? verzeichnisGebuendelt(eltern) : true);
+  // Ein Verzeichnis mit einzeln laufenden Plänen ordnet nur – ohne eigenen Lauf.
+  const verzeichnisEinzeln = form.kind === 'verzeichnis' && form.planlaufModus === 'einzeln';
+  const braucheLauf = !vorhandenerLauf && !laeuftMit && !verzeichnisEinzeln;
+
+  // Die Wahl gebündelt/einzeln ist frei, solange weder das Verzeichnis noch
+  // seine Pläne einen Lauf haben. Danach geht es nur noch Richtung „einzeln“.
+  const planIds = doc ? data.documents.filter((d) => d.parentId === doc.id).map((d) => d.id) : [];
+  const modusGesperrt = Boolean(
+    doc && data.runs.some((r) => r.documentId === doc.id || planIds.includes(r.documentId)),
+  );
+  /** Laufender gebündelter Lauf dieses Verzeichnisses – lässt sich aufteilen. */
+  const buendelLauf =
+    doc?.kind === 'verzeichnis' && verzeichnisGebuendelt(doc)
+      ? data.runs.find((r) => r.documentId === doc.id && r.status === 'laufend')
+      : undefined;
+  /** Laufender Lauf des Verzeichnisses, aus dem sich dieser Plan herauslösen lässt. */
+  const elternLauf =
+    doc && laeuftMit && eltern
+      ? data.runs.find((r) => r.documentId === eltern.id && r.status === 'laufend')
+      : undefined;
+  const ohneEigenenLauf = planIds.filter(
+    (id) => !data.runs.some((r) => r.documentId === id && r.status !== 'abgebrochen'),
+  ).length;
   const pakete = data.documents.filter((d) => d.projectId === project.id && d.kind === 'paket');
 
   // Pläne eines Verzeichnisses gehören automatisch zu dessen Planpaket
@@ -458,6 +567,13 @@ function PlanDialog({
       datum: form.kind === 'verzeichnis' ? form.datum || null : null,
       parentId: form.kind === 'plan' ? form.parentId : null,
       paketId: wirksamesPaket,
+      planlaufModus: form.kind === 'verzeichnis' ? form.planlaufModus : undefined,
+      // Ein Plan, der schon einen eigenen Lauf hat, behält ihn – auch wenn er
+      // in ein gebündeltes Verzeichnis verschoben wird.
+      eigenerLauf:
+        form.kind === 'plan' && form.parentId !== null && (doc?.eigenerLauf || Boolean(eigenerAktiverLauf))
+          ? true
+          : undefined,
     };
 
     // Ohne eigenen Planlauf – etwa Pläne eines Verzeichnisses – bleibt es bei
@@ -469,9 +585,11 @@ function PlanDialog({
       } else {
         addDocument({ ...werte, projectId: project.id });
         toast(
-          untergeordnet
+          laeuftMit
             ? 'Plan angelegt – er läuft im Planlauf des Verzeichnisses mit.'
-            : 'Eintrag angelegt.',
+            : verzeichnisEinzeln
+              ? 'Planverzeichnis angelegt – seine Pläne erhalten ihre Planläufe einzeln.'
+              : 'Eintrag angelegt.',
         );
       }
       onClose();
@@ -582,7 +700,7 @@ function PlanDialog({
             {form.kind === 'plan' ? (
               <Field
                 label="Planverzeichnis"
-                hint="Pläne eines Verzeichnisses laufen in dessen Planlauf mit; ohne Verzeichnis erhält der Plan einen eigenen Lauf."
+                hint="Ob die Pläne im Lauf des Verzeichnisses mitlaufen oder einzeln, legt das Verzeichnis fest; ohne Verzeichnis erhält der Plan einen eigenen Lauf."
               >
                 <Select
                   value={form.parentId ?? ''}
@@ -670,6 +788,41 @@ function PlanDialog({
                 <TextInput value={form.datum} onChange={(v) => set('datum', v)} type="date" />
               </Field>
             ) : null}
+            {form.kind === 'verzeichnis' ? (
+              <Field
+                label="Planlauf"
+                full
+                hint={
+                  modusGesperrt
+                    ? verzeichnisEinzeln
+                      ? 'Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.'
+                      : 'Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.'
+                    : 'Ohne Haken durchläuft das Verzeichnis den Planlauf gebündelt, seine Pläne laufen mit.'
+                }
+              >
+                <div className="row wrap" style={{ gap: 12 }}>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={verzeichnisEinzeln}
+                      disabled={modusGesperrt}
+                      onChange={(e) => set('planlaufModus', e.target.checked ? 'einzeln' : 'gebuendelt')}
+                    />
+                    Pläne einzeln durch den Planlauf führen
+                  </label>
+                  {doc && planeMitEigenemLauf(data.documents, data.runs, doc.id).length > 0 ? (
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setNachtrag('buendeln')}>
+                      Pläne wieder bündeln …
+                    </button>
+                  ) : null}
+                  {buendelLauf && planIds.length > 0 ? (
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setNachtrag('aufteilen')}>
+                      Alle Pläne einzeln weiterführen …
+                    </button>
+                  ) : null}
+                </div>
+              </Field>
+            ) : null}
             <Field label="Bemerkung" full>
               <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
             </Field>
@@ -703,13 +856,27 @@ function PlanDialog({
                   Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Workflow selbst bleibt davon
                   unberührt.
                 </p>
-                <SchrittListe steps={steps} setSteps={setSteps} rollen={rollen.map((r) => r.name)} />
+                <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, form.gewerk)} />
               </div>
             </>
-          ) : untergeordnet ? (
+          ) : verzeichnisEinzeln ? (
             <Callout icon="i">
-              Pläne eines Planverzeichnisses erhalten keinen eigenen Planlauf – maßgeblich ist der Lauf des
-              Verzeichnisses.
+              Die Pläne dieses Verzeichnisses durchlaufen den Planlauf einzeln; das Verzeichnis selbst ordnet sie
+              nur. Den Planlauf eines Plans startest du über den Plan.
+            </Callout>
+          ) : laeuftMit ? (
+            <Callout icon="i">
+              <div className="row-between wrap" style={{ gap: 10 }}>
+                <span>
+                  Dieser Plan läuft im Planlauf des Verzeichnisses mit
+                  {elternLauf ? ` („${elternLauf.name}“)` : ''}.
+                </span>
+                {elternLauf ? (
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setNachtrag('herausloesen')}>
+                    Aus dem Verzeichnislauf herauslösen …
+                  </button>
+                ) : null}
+              </div>
             </Callout>
           ) : (
             <Callout icon="i">
@@ -725,6 +892,42 @@ function PlanDialog({
           art={schnell}
           onClose={() => setSchnell(null)}
           onAnlegen={(titel, nummer) => schnellAnlegen(schnell, titel, nummer)}
+        />
+      ) : null}
+
+      {nachtrag === 'herausloesen' && doc && elternLauf ? (
+        <ConfirmDialog
+          titel="Plan herauslösen?"
+          text={`„${doc.titel}“ erhält einen eigenen Planlauf und übernimmt dazu den Stand von „${elternLauf.name}“ – erledigte Schritte bleiben erledigt. Der Lauf des Verzeichnisses geht für die übrigen Pläne weiter.`}
+          bestaetigenLabel="Herauslösen"
+          onConfirm={() => {
+            const runId = planHerausloesen(doc.id);
+            if (!runId) return;
+            toast('Plan herausgelöst – er läuft jetzt einzeln weiter.');
+            onClose();
+            onLaufGestartet(runId);
+          }}
+          onClose={() => setNachtrag(null)}
+        />
+      ) : null}
+
+      {nachtrag === 'buendeln' && doc ? (
+        <BuendelnDialog verzeichnis={doc} onClose={() => setNachtrag(null)} onGebuendelt={() => onClose()} />
+      ) : null}
+
+      {nachtrag === 'aufteilen' && doc && buendelLauf ? (
+        <ConfirmDialog
+          titel="Alle Pläne einzeln weiterführen?"
+          text={`${ohneEigenenLauf === 1 ? 'Ein Plan erhält' : `${ohneEigenenLauf} Pläne erhalten`} einen eigenen Planlauf mit dem Stand von „${buendelLauf.name}“. Der gebündelte Lauf endet, das Verzeichnis ordnet die Pläne danach nur noch. Das lässt sich nicht rückgängig machen.`}
+          bestaetigenLabel="Einzeln weiterführen"
+          onConfirm={() => {
+            const anzahl = verzeichnisAufteilen(doc.id);
+            toast(
+              anzahl === 1 ? 'Ein Plan läuft jetzt einzeln weiter.' : `${anzahl} Pläne laufen jetzt einzeln weiter.`,
+            );
+            onClose();
+          }}
+          onClose={() => setNachtrag(null)}
         />
       ) : null}
 

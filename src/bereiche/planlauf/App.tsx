@@ -53,7 +53,6 @@ export function App() {
   return (
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
-        <BereichWechsel />
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
           <AppIcon size={38} />
           <div className="sidebar-brand-text">
@@ -121,6 +120,7 @@ export function App() {
             </button>
           </div>
           Daten werden lokal im Browser gespeichert.
+          <BereichWechsel />
         </div>
       </aside>
 

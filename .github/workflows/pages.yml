@@ -62,9 +62,11 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # Steht Pages auf „Deploy from a branch“, schlägt die Bereitstellung fehl.
-    # Das ist dann kein Fehler des Builds – die Ablage in gh-pages und app/
-    # übernimmt in diesem Fall die Veröffentlichung.
+    # Auch bei „Deploy from a branch“ nimmt GitHub die Bereitstellung an; der
+    # Branch-Build von GitHub überschreibt sie dann, sobald er fertig ist.
+    # continue-on-error fängt ab, dass Pages nicht aktiviert ist oder die
+    # Bereitstellung aus anderen Gründen scheitert – die Ablage in gh-pages und
+    # app/ läuft davon unabhängig.
     continue-on-error: true
     permissions:
       pages: write

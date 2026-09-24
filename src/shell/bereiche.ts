@@ -29,7 +29,9 @@ export const BEREICHE: Bereich[] = [
   {
     id: 'baubetrieb',
     titel: 'Baubetriebsplanung',
-    beschreibung: 'Dieser Bereich ist angelegt, aber noch ohne Inhalt.',
+    untertitel: 'Noch ohne Inhalt',
+    beschreibung:
+      'Der Bereich ist angelegt – mit eigenem Datenbestand und eigenen Einstellungen. Die Fachlichkeit folgt.',
     icon: 'kalender',
     inVorbereitung: true,
   },

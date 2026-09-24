@@ -263,9 +263,10 @@ export function EmptyState({
   );
 }
 
-export function Progress({ wert, ton = '' }: { wert: number; ton?: '' | 'green' | 'red' }) {
+/** Fortschrittsbalken. Immer in der Hausfarbe – der Status steht daneben. */
+export function Progress({ wert }: { wert: number }) {
   return (
-    <div className={`progress ${ton}`} title={`${wert}%`}>
+    <div className="progress" title={`${wert}%`}>
       <div style={{ width: `${Math.min(100, Math.max(0, wert))}%` }} />
     </div>
   );

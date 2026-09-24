@@ -269,6 +269,19 @@ export function SchrittListe({
   const setStep = (id: string, patch: Partial<ProcessTemplateStep>) =>
     setSteps(steps.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 
+  /**
+   * Mögliche Ziele für „weiter mit“. Die Nummer ist die Nummer des Schritts im
+   * Workflow – nicht die Position in dieser Auswahl, aus der der bearbeitete
+   * Schritt herausfällt.
+   */
+  const ziele = (ausser: string) =>
+    steps.map((z, i) => ({ ziel: z, nummer: i + 1 })).filter((x) => x.ziel.id !== ausser);
+
+  /** Rollen ohne Dubletten: dieselbe Funktion gibt es je Gewerk einmal. */
+  const rollenListe = [...new Set(rollen.map((r) => r.trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'de'),
+  );
+
   const verschieben = (idx: number, richtung: -1 | 1) => {
     const ziel = idx + richtung;
     if (ziel < 0 || ziel >= steps.length) return;
@@ -367,13 +380,11 @@ export function SchrittListe({
                         }
                       >
                         <option value="">nächstem Schritt</option>
-                        {steps
-                          .filter((z) => z.id !== step.id)
-                          .map((z, zi) => (
-                            <option key={z.id} value={z.id}>
-                              {zi + 1}. {z.name || 'ohne Namen'}
-                            </option>
-                          ))}
+                        {ziele(step.id).map(({ ziel, nummer }) => (
+                          <option key={ziel.id} value={ziel.id}>
+                            {nummer}. {ziel.name || 'ohne Namen'}
+                          </option>
+                        ))}
                         <option value="ende">Planlauf beenden</option>
                       </select>
                     </Field>
@@ -438,13 +449,11 @@ export function SchrittListe({
                             }
                           >
                             <option value="">weiter mit: nächstem Schritt</option>
-                            {steps
-                              .filter((z) => z.id !== step.id)
-                              .map((z, zi) => (
-                                <option key={z.id} value={z.id}>
-                                  weiter mit: {zi + 1}. {z.name || 'ohne Namen'}
-                                </option>
-                              ))}
+                            {ziele(step.id).map(({ ziel, nummer }) => (
+                              <option key={ziel.id} value={ziel.id}>
+                                weiter mit: {nummer}. {ziel.name || 'ohne Namen'}
+                              </option>
+                            ))}
                             <option value="ende">Planlauf beenden</option>
                           </select>
                           <button
@@ -505,7 +514,7 @@ export function SchrittListe({
       ))}
 
       <datalist id="rollen-liste">
-        {rollen.map((r) => (
+        {rollenListe.map((r) => (
           <option key={r} value={r} />
         ))}
       </datalist>
