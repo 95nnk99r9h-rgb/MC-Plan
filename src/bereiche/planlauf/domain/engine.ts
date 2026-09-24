@@ -220,6 +220,8 @@ export function verzugTage(run: PlanRun): number {
  */
 export function abbruchHinweis(run: PlanRun, kind: DocumentKind = 'plan'): string {
   if (run.status !== 'abgebrochen') return '';
+  if (run.abbruchArt === 'aufgeteilt') return 'in Einzelläufe der Pläne aufgeteilt';
+  if (run.abbruchArt === 'gebuendelt') return 'wieder im Planlauf des Verzeichnisses gebündelt';
   if (run.abbruchArt !== 'neuer_index') return 'ersatzlos abgebrochen';
   const label = INDEX_LABEL[kind];
   return run.abbruchNeuerIndex ? `ersetzt durch ${label} ${run.abbruchNeuerIndex}` : `ersetzt durch neuen ${label}`;
@@ -284,6 +286,18 @@ export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
  * Ermittelt die Person, die eine Rolle für ein bestimmtes Gewerk ausfüllt.
  * Rollen ohne Gewerkbezug sind einmal für alle Gewerke besetzt.
  */
+/**
+ * Funktionen, die für einen Eintrag eines Gewerks in Frage kommen: die des
+ * Gewerks und die übergreifenden – je Bezeichnung einmal. Ein Schritt merkt sich
+ * nur die Bezeichnung; welche Funktion und damit welche Person gemeint ist,
+ * ergibt sich aus dem Gewerk des Eintrags (siehe kontaktFuerRolleUndGewerk).
+ * Ohne Gewerk kommen alle Funktionen in Frage.
+ */
+export function funktionenFuerGewerk(rollen: Role[], gewerk: string): string[] {
+  const passend = rollen.filter((r) => !gewerk || r.gewerk === null || r.gewerk === gewerk);
+  return [...new Set(passend.map((r) => r.name))];
+}
+
 export function kontaktFuerRolleUndGewerk(
   kontakte: Contact[],
   rollen: Role[],
@@ -301,15 +315,67 @@ export function kontaktFuerRolleUndGewerk(
 /**
  * Eigenständig geführte Planläufe.
  *
- * Pläne eines Planverzeichnisses laufen im Lauf des Verzeichnisses mit. Haben
- * sie – etwa weil sie erst später zugeordnet wurden – noch einen eigenen Lauf,
- * bleibt dieser erhalten, zählt aber nicht mehr als eigenständiger Planlauf.
+ * Maßgeblich ist hatEigenenPlanlauf: Pläne eines gebündelten Verzeichnisses
+ * laufen im Lauf des Verzeichnisses mit, ein Verzeichnis mit Plänen einzeln
+ * hat selbst keinen Lauf. Läufe, die nach dieser Regel nicht (mehr) zählen –
+ * etwa der Lauf eines später zugeordneten Plans –, bleiben erhalten, gelten
+ * aber nicht als eigenständig.
  */
+/**
+ * Lauf, der nicht abgebrochen, sondern in eine andere Form überführt wurde:
+ * aufgeteilt in Einzelläufe oder wieder im Verzeichnis gebündelt. Solche Läufe
+ * zählen nicht als Abbruch des Eintrags.
+ */
+export function laufUeberfuehrt(run: Pick<PlanRun, 'status' | 'abbruchArt'>): boolean {
+  return run.status === 'abgebrochen' && (run.abbruchArt === 'aufgeteilt' || run.abbruchArt === 'gebuendelt');
+}
+
 export function eigenstaendigeLaeufe(documents: PlanDocument[], runs: PlanRun[]): PlanRun[] {
   return runs.filter((r) => {
     const doc = documents.find((d) => d.id === r.documentId);
-    return !doc || hatEigenenPlanlauf(doc);
+    return !doc || hatEigenenPlanlauf(doc, documents);
   });
+}
+
+/**
+ * Übernimmt einen Planlauf samt Stand für einen anderen Eintrag – etwa wenn
+ * ein Plan aus dem gebündelten Lauf seines Verzeichnisses herausgelöst wird.
+ * Erledigte Schritte bleiben erledigt, der offene Schritt bleibt offen, Start
+ * und Termine laufen weiter. Schritte und Antworten erhalten neue Kennungen;
+ * Verweise (Nachfolger, Antwortziele, gewählte Antwort) werden umgebogen.
+ */
+export function laufUebernehmen(
+  quelle: PlanRun,
+  ziel: { documentId: ID; name: string; index: string; bemerkung: string },
+  neueId: (prefix: string) => ID,
+): Omit<PlanRun, 'id'> {
+  const schrittIds = new Map(quelle.steps.map((s) => [s.id, neueId('rs')]));
+  const umbiegen = (z: ID | 'ende' | null) => (z === 'ende' || z === null ? z : (schrittIds.get(z) ?? null));
+  return {
+    projectId: quelle.projectId,
+    documentId: ziel.documentId,
+    templateId: quelle.templateId,
+    templateName: quelle.templateName,
+    name: ziel.name,
+    index: ziel.index,
+    start: quelle.start,
+    status: 'laufend',
+    abbruchGrund: null,
+    abbruchDatum: null,
+    abbruchArt: null,
+    abbruchNeuerIndex: null,
+    bemerkung: ziel.bemerkung,
+    steps: quelle.steps.map((s) => {
+      const antwortIds = new Map(s.antworten.map((a) => [a.id, neueId('ant')]));
+      return {
+        ...s,
+        id: schrittIds.get(s.id)!,
+        naechster: umbiegen(s.naechster),
+        antworten: s.antworten.map((a) => ({ ...a, id: antwortIds.get(a.id)!, ziel: umbiegen(a.ziel) })),
+        gewaehlteAntwortId: s.gewaehlteAntwortId ? (antwortIds.get(s.gewaehlteAntwortId) ?? null) : null,
+      };
+    }),
+  };
 }
 
 /**

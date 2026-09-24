@@ -272,6 +272,9 @@ function migriere(daten: AppData): AppData {
         eingangSoll: (alt.eingangSoll as string) ?? null,
         datum: (alt.datum as string) ?? null,
         bemerkung: d.bemerkung ?? '',
+        // Ohne Angabe gilt gebündelt – ältere Bestände bleiben unverändert.
+        planlaufModus: d.planlaufModus,
+        eigenerLauf: d.eigenerLauf,
       };
     }),
     templates: (daten.templates ?? []).map((t) => ({

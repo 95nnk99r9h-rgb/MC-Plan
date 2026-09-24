@@ -14,8 +14,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="MC Plan" />
-    <script type="module" crossorigin src="./assets/index-BTxlIO35.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-D0rV-Snr.css">
+    <script type="module" crossorigin src="./assets/index-CvyiSkSo.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BVzpBzcF.css">
   </head>
   <body>
     <div id="root">
@@ -26,15 +26,17 @@
         Wird die Seite statisch ausgeliefert (GitHub Pages mit der Quelle
         "Deploy from a branch" liefert den Quellcode statt des Builds), startet
         die Anwendung nicht. Das Skript unten wechselt dann automatisch zur
-        gebauten Fassung im Unterverzeichnis ./app/, die der Workflow bei jedem
-        Push dort ablegt. Fehlt auch diese, bleibt der Hinweis stehen.
+        gebauten Fassung im Unterverzeichnis ./app/. Dieser Build ist eingecheckt
+        und wird vom Workflow nach jedem Push auf main erneuert (siehe README,
+        Abschnitt „Veröffentlichen“). Fehlt er, bleibt der Hinweis stehen.
       -->
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 40rem; margin: 12vh auto; padding: 0 1.5rem; color: #1d1d1f; line-height: 1.5;">
         <h1 style="font-size: 1.3rem; margin: 0 0 .75rem;">MC Plan wird geladen …</h1>
         <p style="margin: 0 0 1rem; color: #6e6e73;">
-          Falls diese Meldung stehen bleibt, wird der Quellcode ausgeliefert und nicht die gebaute
-          Anwendung. Auf GitHub Pages hilft: <strong>Settings → Pages → Build and deployment →
-          Source: GitHub Actions</strong>.
+          Falls diese Meldung stehen bleibt, fehlt die gebaute Anwendung im Ordner
+          <strong>app/</strong>. Sie entsteht mit <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">npm run build</code>
+          und wird aus <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">dist/</code> nach
+          <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">app/</code> übernommen.
         </p>
         <p style="margin: 0; color: #6e6e73;">
           Lokal wird die Anwendung mit <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">npm run dev</code>

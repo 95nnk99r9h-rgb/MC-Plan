@@ -5,10 +5,11 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
+import { eigeneKontakteSichern, laufUebernehmen, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
 import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
 import { today } from '../../../shared/dates';
+import { INDEX_LABEL } from '../domain/types';
 import type {
   AbbruchArt,
   AppData,
@@ -27,6 +28,11 @@ import type {
 
 export function newId(prefix = 'id'): ID {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Name eines Planlaufs – wie beim Start aus der Planliste. */
+function laufName(doc: PlanDocument): string {
+  return `Planlauf ${doc.nummer || doc.titel}${doc.index ? ` ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}`;
 }
 
 interface StoreValue {
@@ -73,6 +79,26 @@ interface StoreValue {
   addStep: (runId: ID, step: Omit<RunStep, 'id'>, position?: number) => void;
   /** Bricht einen Lauf mit Begründung ab; er bleibt im Projekt sichtbar. */
   abbrechenRun: (runId: ID, grund: string, art: AbbruchArt, neuerIndex: string | null) => void;
+  /* Planverzeichnisse: gebündelt oder Pläne einzeln */
+  /**
+   * Löst einen Plan aus dem laufenden Lauf seines gebündelten Verzeichnisses
+   * heraus. Der Plan übernimmt dessen Stand. Liefert die Kennung des neuen Laufs.
+   */
+  planHerausloesen: (planId: ID) => ID | null;
+  /**
+   * Stellt ein Planverzeichnis auf Einzelläufe um. Läuft es bereits, übernimmt
+   * jeder Plan ohne eigenen Lauf dessen Stand, und der gebündelte Lauf endet
+   * als „aufgeteilt“. Liefert die Zahl der neu entstandenen Läufe.
+   */
+  verzeichnisAufteilen: (verzeichnisId: ID) => number;
+  /**
+   * Führt Pläne mit eigenem Lauf wieder im gebündelten Lauf ihres Verzeichnisses
+   * zusammen. Läuft das Verzeichnis noch, kehren die Pläne in dessen Lauf
+   * zurück; sonst entsteht ein neuer Verzeichnislauf mit dem Stand von
+   * `quelleRunId`. Die eigenen Läufe der Pläne enden als „gebündelt“, nicht
+   * gewählte Pläne behalten ihren Lauf. Liefert die Kennung des Verzeichnislaufs.
+   */
+  planeBuendeln: (verzeichnisId: ID, planIds: ID[], quelleRunId: ID | null) => ID | null;
   /* Verwaltung */
   ersetzeDaten: (d: AppData) => void;
   zuruecksetzen: () => void;
@@ -82,6 +108,7 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(() => ladeDaten());
+
   useEffect(() => {
     speichereDaten(data);
   }, [data]);
@@ -218,7 +245,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteDocument: (id) =>
         mutate((d) => ({
           ...d,
-          documents: d.documents.filter((x) => x.id !== id),
+          // Pläne eines gelöschten Verzeichnisses werden zu Einzelplänen –
+          // sonst verlören Pläne mit eigenem Lauf ihren Platz in den Listen.
+          documents: d.documents
+            .filter((x) => x.id !== id)
+            .map((x) => (x.parentId === id ? { ...x, parentId: null, eigenerLauf: undefined } : x)),
           runs: d.runs.filter((r) => r.documentId !== id),
         })),
 
@@ -285,6 +316,132 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : r,
           ),
         })),
+
+      planHerausloesen: (planId) => {
+        const plan = data.documents.find((x) => x.id === planId);
+        if (!plan || plan.kind !== 'plan' || !plan.parentId) return null;
+        const quelle = data.runs.find((r) => r.documentId === plan.parentId && r.status === 'laufend');
+        if (!quelle) return null;
+        const id = newId('run');
+        const lauf = laufUebernehmen(
+          quelle,
+          {
+            documentId: plan.id,
+            name: laufName(plan),
+            index: plan.index,
+            bemerkung: `Aus „${quelle.name}“ herausgelöst`,
+          },
+          newId,
+        );
+        mutate((d) => ({
+          ...d,
+          documents: d.documents.map((x) => (x.id === planId ? { ...x, eigenerLauf: true } : x)),
+          runs: [...d.runs, { ...lauf, id }],
+        }));
+        return id;
+      },
+
+      verzeichnisAufteilen: (verzeichnisId) => {
+        const verzeichnis = data.documents.find((x) => x.id === verzeichnisId);
+        if (!verzeichnis || verzeichnis.kind !== 'verzeichnis') return 0;
+        const quelle = data.runs.find((r) => r.documentId === verzeichnisId && r.status === 'laufend');
+        // Pläne, die noch keinen eigenen (nicht abgebrochenen) Lauf haben
+        const ohneLauf = data.documents.filter(
+          (x) =>
+            x.kind === 'plan' &&
+            x.parentId === verzeichnisId &&
+            !data.runs.some((r) => r.documentId === x.id && r.status !== 'abgebrochen'),
+        );
+        const neue = quelle
+          ? ohneLauf.map((plan) => ({
+              ...laufUebernehmen(
+                quelle,
+                {
+                  documentId: plan.id,
+                  name: laufName(plan),
+                  index: plan.index,
+                  bemerkung: `Aus „${quelle.name}“ aufgeteilt`,
+                },
+                newId,
+              ),
+              id: newId('run'),
+            }))
+          : [];
+        mutate((d) => ({
+          ...d,
+          documents: d.documents.map((x) =>
+            x.id === verzeichnisId ? { ...x, planlaufModus: 'einzeln' as const } : x,
+          ),
+          runs: [
+            ...d.runs.map((r) =>
+              quelle && r.id === quelle.id
+                ? {
+                    ...r,
+                    status: 'abgebrochen' as const,
+                    abbruchArt: 'aufgeteilt' as const,
+                    abbruchGrund: 'In Einzelläufe der Pläne aufgeteilt',
+                    abbruchDatum: today(),
+                    abbruchNeuerIndex: null,
+                  }
+                : r,
+            ),
+            ...neue,
+          ],
+        }));
+        return neue.length;
+      },
+
+      planeBuendeln: (verzeichnisId, planIds, quelleRunId) => {
+        const verzeichnis = data.documents.find((x) => x.id === verzeichnisId);
+        if (!verzeichnis || verzeichnis.kind !== 'verzeichnis' || planIds.length === 0) return null;
+        const aktiv = (docId: ID) => data.runs.find((r) => r.documentId === docId && r.status !== 'abgebrochen');
+        const laufend = data.runs.find((r) => r.documentId === verzeichnisId && r.status === 'laufend');
+        let neuerLauf: PlanRun | null = null;
+        if (!laufend) {
+          const quelle = data.runs.find((r) => r.id === quelleRunId);
+          if (!quelle) return null;
+          neuerLauf = {
+            ...laufUebernehmen(
+              quelle,
+              {
+                documentId: verzeichnisId,
+                name: laufName(verzeichnis),
+                index: verzeichnis.index,
+                bemerkung: `Pläne wieder gebündelt – Stand von „${quelle.name}“ übernommen`,
+              },
+              newId,
+            ),
+            id: newId('run'),
+          };
+        }
+        const beendete = new Set(planIds.map((id) => aktiv(id)?.id).filter((id): id is ID => Boolean(id)));
+        mutate((d) => ({
+          ...d,
+          documents: d.documents.map((x) => {
+            if (x.id === verzeichnisId) return { ...x, planlaufModus: 'gebuendelt' as const };
+            if (x.kind !== 'plan' || x.parentId !== verzeichnisId) return x;
+            if (planIds.includes(x.id)) return { ...x, eigenerLauf: undefined };
+            // Nicht gewählte Pläne mit eigenem Lauf behalten ihn
+            return aktiv(x.id) ? { ...x, eigenerLauf: true } : x;
+          }),
+          runs: [
+            ...d.runs.map((r) =>
+              beendete.has(r.id)
+                ? {
+                    ...r,
+                    status: 'abgebrochen' as const,
+                    abbruchArt: 'gebuendelt' as const,
+                    abbruchGrund: 'Wieder im Planlauf des Verzeichnisses gebündelt',
+                    abbruchDatum: today(),
+                    abbruchNeuerIndex: null,
+                  }
+                : r,
+            ),
+            ...(neuerLauf ? [neuerLauf] : []),
+          ],
+        }));
+        return laufend?.id ?? neuerLauf!.id;
+      },
 
       ersetzeDaten: (d) => mutate(() => d),
       zuruecksetzen: () => mutate(() => seedData()),
