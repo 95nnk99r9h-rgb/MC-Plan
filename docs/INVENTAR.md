@@ -1,7 +1,7 @@
 # Inventar der Anwendung
 
-Stand: Analyse des Quellcodes in diesem Repository (Zweig
-`claude/planlauf-management-app-5jn9sa`). Es sind ausschließlich Sachverhalte
+Stand: Analyse des Quellcodes im Repository `Mailander-Consult-GmbH/MC-Plan`
+(Zweig `main`). Es sind ausschließlich Sachverhalte
 aufgeführt, die sich im Code belegen lassen; Dateipfade verweisen auf die
 jeweilige Fundstelle.
 
@@ -158,10 +158,10 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
    build` (`tsc -b && vite build`, Ergebnis in `dist/`). `npm run preview`
    liefert den Build lokal aus.
 7. **Veröffentlichen**: Der Workflow `.github/workflows/pages.yml` baut bei
-   jedem Push auf `main` bzw. den Entwicklungszweig und stellt `dist/` über
-   GitHub Pages bereit; zusätzlich wird die gebaute Fassung im Zweig unter
-   `app/` abgelegt. Wegen `base: './'` funktioniert die Anwendung auch in
-   einem Unterverzeichnis.
+   jedem Push auf `main` und stellt `dist/` über GitHub Pages bereit;
+   zusätzlich legt er den Build im Branch `gh-pages` und im Ordner `app/` auf
+   `main` ab. Bei Pull Requests baut er nur (einschließlich Typprüfung). Wegen
+   `base: './'` funktioniert die Anwendung auch in einem Unterverzeichnis.
 
 ## 6. Bekannte Meldungen und ihre Ursachen
 

@@ -54,18 +54,27 @@ verweist auf `/src/main.tsx`, was ein Browser nicht ausführen kann. Dieser Jeky
 jedem Push zusätzlich zum Workflow und überschreibt dessen Ergebnis, weil er später fertig wird.
 
 Nach der Umstellung veröffentlicht ausschließlich
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml): Der Workflow baut bei jedem Push und
-stellt `dist/` bereit. Die Seite erscheint dann unter `https://<konto>.github.io/<repository>/`.
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml): Der Workflow baut bei jedem Push auf
+`main` und stellt `dist/` bereit. Die Seite erscheint dann unter
+`https://mailander-consult-gmbh.github.io/MC-Plan/`. Bei Pull Requests prüft und baut derselbe
+Workflow nur, veröffentlicht aber nichts.
 
-Zwei Hilfen, falls die Einstellung nicht geändert werden kann oder soll:
+Hilfen, falls die Einstellung nicht geändert werden kann oder soll:
 
 * Der Workflow legt denselben Build zusätzlich im Branch **`gh-pages`** ab. Damit genügt es auch,
   unter „Deploy from a branch" den Branch `gh-pages` und den Ordner `/ (root)` zu wählen.
-* Wird versehentlich doch der Quellcode ausgeliefert, erscheint statt einer weißen Seite ein
-  Hinweis mit genau diesem Lösungsweg.
+* Außerdem schreibt er den Build in den Ordner **`app/`** auf `main`. Wird versehentlich doch der
+  Quellcode ausgeliefert, wechselt die Startseite nach 1,5 Sekunden dorthin; fehlt auch dieser
+  Build, erscheint statt einer weißen Seite ein Hinweis mit genau diesem Lösungsweg. Der Ordner
+  wird nicht von Hand gepflegt.
+
+Die Ablage in `gh-pages` und `app/` braucht Schreibrechte für den Workflow (Settings → Actions →
+General → Workflow permissions) und scheitert, wenn `main` gegen direkte Pushes geschützt ist –
+der Workflow meldet das dann als Warnung. Für private Repositories setzt GitHub Pages einen
+kostenpflichtigen GitHub-Plan voraus.
 
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
-Ohne diese Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/PLM-DB/` führt das
+Ohne diese Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/MC-Plan/` führt das
 ebenfalls zu einer weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/planlauf/fristen`), daher
 funktionieren Direktaufrufe und das Neuladen ohne zusätzliche Serverregeln.
 
