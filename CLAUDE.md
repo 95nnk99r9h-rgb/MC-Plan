@@ -50,7 +50,9 @@ ignoriert.
 * `src/shared/` – fachfreie Bausteine (UI, Icons, Datumsrechnung, Excel lesen/schreiben, Druck,
   PWA, `global.css` mit den Design-Tokens).
 * `src/bereiche/planlauf/`:
-  * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise nur über IDs),
+  * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise über IDs – außer: Schritte
+    nennen ihre Funktion per `roleName`, Gewerke sind Namen; Umbenennungen müssen diese Stellen
+    mitziehen),
   * `domain/engine.ts` Weg durch die Kette, Soll-Termine, Ampel, To-Dos, Zuständigkeiten,
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten,
   * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,
@@ -70,7 +72,9 @@ ignoriert.
   Fassung abweicht, und hebt jeden älteren Stand in einem Schritt auf die aktuelle.
 * Mitgelieferte Stammdaten geändert (`STANDARD_ROLLEN`, `STANDARD_TEMPLATES` in `seed.ts`)?
   **`STAMMDATEN_VERSION`** erhöhen, damit vorhandene Bestände sie übernehmen
-  (`stammdatenAktualisieren`).
+  (`stammdatenAktualisieren`). Achtung: Das ersetzt alle Standard-Workflows samt Änderungen der
+  Nutzer, überschreibt Funktionen gleichen Namens und Gewerks und stellt gelöschte mitgelieferte
+  Funktionen (auch in Projekten) wieder her.
 * `window.planlaufGestartet` nicht umbenennen – `index.html` und `app/index.html` rufen ihn auf.
 * Ob ein Eintrag einen eigenen Planlauf hat, entscheidet allein `hatEigenenPlanlauf`
   (`domain/types.ts`): Planverzeichnisse laufen gebündelt oder mit Plänen einzeln, Pläne lassen

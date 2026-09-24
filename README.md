@@ -63,7 +63,7 @@ Zu Variante 3: GitHub liefert dabei den Zweig selbst aus. Die `index.html` im St
 Einstiegsdatei für die Entwicklung und verweist auf `/src/main.tsx`, das ein Browser nicht ausführen
 kann. Ihr kleines Skript wechselt deshalb nach 1,5 Sekunden auf **`app/`**, wo der eingecheckte Build
 liegt (direkt erreichbar unter `…/MC-Plan/app/`). Fehlt dieser Build, erscheint statt einer weißen
-Seite ein Hinweis. `app/` wird auf `main` vom Workflow erneuert und nicht von Hand gepflegt; nur wer
+Seite ein Hinweis. Der fertige Build selbst leitet nie um – auch nicht, wenn er langsam lädt. `app/` wird auf `main` vom Workflow erneuert und nicht von Hand gepflegt; nur wer
 einen anderen Zweig über Pages ansehen will, baut dort selbst:
 
 ```bash
@@ -71,10 +71,17 @@ npm run build
 rm -rf app && cp -r dist app
 ```
 
-Die Ablage in `gh-pages` und `app/` braucht Schreibrechte für den Workflow (Settings → Actions →
-General → Workflow permissions) und scheitert, wenn `main` gegen direkte Pushes geschützt ist – der
-Workflow meldet das dann als Warnung. Für private Repositories setzt GitHub Pages einen
-kostenpflichtigen GitHub-Plan voraus.
+Die Quelle muss auf „GitHub Actions“, `gh-pages` oder `main` stehen. Zeigt „Deploy from a branch“
+auf einen anderen Zweig, liefert GitHub dessen Stand aus und überschreibt damit auch die
+Bereitstellung des Workflows. Mit „Deploy from a branch“ auf `main` laufen beide Wege parallel –
+es gilt, was zuletzt fertig wird; eindeutig ist daher „GitHub Actions“.
+
+Die Schreibrechte für die Ablage in `gh-pages` und `app/` fordert der Workflow selbst an
+(`permissions: contents: write` im Job `ablage`); die Voreinstellung unter Settings → Actions →
+General → Workflow permissions muss dafür nicht geändert werden. Ist `main` gegen direkte Pushes
+geschützt, scheitert nur die Ablage in `app/` – der Workflow meldet das als Warnung. Wird der Push
+nach `gh-pages` abgewiesen, schlägt der Lauf fehl. Für private Repositories setzt GitHub Pages
+einen kostenpflichtigen GitHub-Plan voraus.
 
 Ändert sich die Hülle (Titel, Symbole, Manifest), zusätzlich den Cache-Namen in `public/sw.js`
 hochzählen, damit installierte Fassungen die neuen Dateien laden.
@@ -94,7 +101,8 @@ ohne Netzverbindung – die Daten liegen ohnehin lokal im Browser.
 * **Desktop (Chrome/Edge):** Installationssymbol in der Adressleiste
 
 Enthalten sind `manifest.webmanifest`, App-Symbole (192/512 px, maskable und Apple-Touch-Icon)
-sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen und
+sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
+gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien kommen direkt aus
 dem Zwischenspeicher. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
@@ -369,6 +377,7 @@ src/
     Start.tsx    Startbildschirm mit den Bereichskacheln
     bereiche.ts  Verzeichnis der Bereiche
     router.ts    #/ · #/planlauf/… · #/baubetrieb/…
+    BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
     icons.tsx    Strichsymbole
@@ -387,14 +396,16 @@ src/
       domain/    Fachlogik ohne UI-Bezug
         types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
         engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
+        abschluss.ts Statuswechsel eines Schritts samt Nachweis
         email.ts     Platzhalter und Aufbereitung der Vorlagen
         export.ts    Kurz- und Langfassung für Excel und PDF
+        importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
       store/
         storage.ts   Persistenz (localStorage) – Austauschpunkt für eine spätere Datenbank
         store.tsx    Zentraler Zustand, alle Schreibzugriffe
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf
-      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Projektreiter)
+      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
       components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, BuendelnDialog …)
     baubetrieb/  Bereich „Baubetriebsplanung“ – angelegt, noch ohne Inhalt
 ```
