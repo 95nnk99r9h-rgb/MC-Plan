@@ -37,7 +37,7 @@ function Platzhalter() {
           onClick={() => navigate({ view: 'start' })}
           title="Zur Übersicht"
         >
-          <AppIcon size={52} />
+          <AppIcon size={42} />
           <div className="sidebar-brand-text">
             <strong>MC Plan</strong>
             <span>Baubetriebsplanung</span>

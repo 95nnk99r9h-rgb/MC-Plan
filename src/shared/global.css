@@ -109,7 +109,8 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 8px 10px 20px;
+  /* Oberkante wie der Titel in der Kopfzeile, damit beide auf einer Linie stehen */
+  padding: 0 10px 16px;
   border: none;
   background: none;
   font: inherit;
@@ -121,8 +122,9 @@ a:hover { text-decoration: underline; }
 .sidebar-brand:hover strong { color: var(--accent); }
 .sidebar-brand-text { min-width: 0; }
 /* Marke füllt die Breite der Menüleiste; Symbol und Schrift wachsen gemeinsam */
-.sidebar-brand-text strong { display: block; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
-.sidebar-brand-text span { display: block; font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
+/* Marke in derselben Schriftgröße wie Titel und Untertitel der Kopfzeile */
+.sidebar-brand-text strong { display: block; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.sidebar-brand-text span { display: block; font-size: 12.5px; color: var(--text-tertiary); }
 
 .nav-group-label {
   font-size: 11px;
@@ -858,8 +860,8 @@ a:hover { text-decoration: underline; }
   padding: 22px 28px 24px 20px;
 }
 .start-kopf-text { flex: 1; min-width: 0; }
-.start-kopf-text h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
-.start-kopf-text p { margin: 0; margin-top: 2px; font-size: 13px; color: var(--text-tertiary); }
+.start-kopf-text h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; }
+.start-kopf-text p { margin: 0; font-size: 12.5px; color: var(--text-tertiary); }
 .start-logo { flex: none; align-self: flex-start; margin-top: 1px; }
 
 /* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch. */

@@ -9,7 +9,7 @@ export function Start() {
     <div className="start">
       <div className="start-inner">
         <header className="start-kopf">
-          <AppIcon size={52} />
+          <AppIcon size={42} />
           <div className="start-kopf-text">
             <h1>MC Plan</h1>
             <p>Bitte einen Bereich wählen.</p>

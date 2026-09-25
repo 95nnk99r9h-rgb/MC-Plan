@@ -54,7 +54,7 @@ export function App() {
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
-          <AppIcon size={52} />
+          <AppIcon size={42} />
           <div className="sidebar-brand-text">
             <strong>MC Plan</strong>
             <span>Planlaufmanagement</span>
