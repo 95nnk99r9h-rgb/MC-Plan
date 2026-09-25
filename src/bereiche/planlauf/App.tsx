@@ -14,7 +14,7 @@ import { Funktionen } from './pages/Funktionen';
 import { Vorlagen } from './pages/Vorlagen';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
-import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
+import { EIGENE_ROLLE, STANDARD_BEARBEITER, type Project } from './domain/types';
 import { Icon } from '../../shared/icons';
 import { AppIcon, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
@@ -48,7 +48,7 @@ export function App() {
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
-  const kopf = kopfzeile(route, projekt?.name, lauf?.name);
+  const kopf = kopfzeile(route, projekt, lauf?.name);
 
   return (
     <div className="app">
@@ -61,6 +61,7 @@ export function App() {
           </div>
         </button>
 
+        <div className="nav-group-label erste">Planlaufmanagement</div>
         <NavItem
           icon="dashboard"
           label="Übersicht"
@@ -129,10 +130,22 @@ export function App() {
           <button type="button" className="btn-icon menu-toggle" onClick={() => setMenuOffen((o) => !o)} aria-label="Menü">
             <Icon name="menu" size={18} />
           </button>
-          <div className="topbar-title">
-            <h1>{kopf.titel}</h1>
-            {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
-          </div>
+          <nav className="breadcrumb" aria-label="Pfad">
+            {kopf.pfad.map((teil, i) => (
+              <span key={i} className="row" style={{ gap: 0, minWidth: 0 }}>
+                {i > 0 ? <span className="trenner">/</span> : null}
+                {i === kopf.pfad.length - 1 ? (
+                  <strong>{teil.label}</strong>
+                ) : teil.route ? (
+                  <button type="button" onClick={() => gehe(teil.route!)}>
+                    {teil.label}
+                  </button>
+                ) : (
+                  <span>{teil.label}</span>
+                )}
+              </span>
+            ))}
+          </nav>
           <div className="topbar-logo">
             <MailaenderLogo height={34} />
           </div>
@@ -140,6 +153,14 @@ export function App() {
 
         <div className="content">
           <div className="content-inner">
+            <div className="seitenkopf">
+              {kopf.eyebrow ? <div className="eyebrow">{kopf.eyebrow}</div> : null}
+              <h1>
+                {kopf.titel}
+                {kopf.punkt ? <span className="punkt">.</span> : null}
+              </h1>
+              {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
+            </div>
             {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
             {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
@@ -168,6 +189,19 @@ export function App() {
           </div>
         </div>
       </main>
+
+      {/* Auf dem Telefon: feste Leiste am unteren Rand statt der Seitenleiste */}
+      <nav className="mobile-nav" aria-label="Hauptnavigation">
+        <MobilItem icon="dashboard" label="Übersicht" aktiv={route.view === 'dashboard'} onClick={() => gehe({ view: 'dashboard' })} />
+        <MobilItem
+          icon="projekt"
+          label="Projekte"
+          aktiv={route.view === 'projekte' || route.view === 'projekt' || route.view === 'planlauf'}
+          onClick={() => gehe({ view: 'projekte' })}
+        />
+        <MobilItem icon="frist" label="Fristen" aktiv={route.view === 'fristen'} onClick={() => gehe({ view: 'fristen' })} />
+        <MobilItem icon="menu" label="Mehr" aktiv={menuOffen} onClick={() => setMenuOffen((o) => !o)} />
+      </nav>
 
       {menuOffen ? (
         <div
@@ -301,6 +335,25 @@ function NavItem({
   );
 }
 
+function MobilItem({
+  icon,
+  label,
+  aktiv,
+  onClick,
+}: {
+  icon: IconName;
+  label: string;
+  aktiv: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className={aktiv ? 'active' : ''} onClick={onClick}>
+      <Icon name={icon} size={20} />
+      {label}
+    </button>
+  );
+}
+
 function NichtGefunden({ onZurueck }: { onZurueck: () => void }) {
   return (
     <Card>
@@ -318,25 +371,93 @@ function NichtGefunden({ onZurueck }: { onZurueck: () => void }) {
   );
 }
 
-function kopfzeile(route: Route, projektName?: string, laufName?: string): { titel: string; sub?: string } {
+interface Kopf {
+  /** Kleine Zeile über dem Titel. */
+  eyebrow?: string;
+  titel: string;
+  sub?: string;
+  /** Titel mit einem Punkt in der Akzentfarbe abschließen (nur feste Seitentitel). */
+  punkt?: boolean;
+  /** Brotkrümelpfad in der Kopfzeile; der letzte Teil ist die aktuelle Seite. */
+  pfad: { label: string; route?: Route }[];
+}
+
+const BEREICH = 'Planlaufmanagement';
+
+function kopfzeile(route: Route, projekt?: Project, laufName?: string): Kopf {
+  const start = { label: BEREICH, route: { view: 'dashboard' } as Route };
+  const projekte = { label: 'Projekte', route: { view: 'projekte' } as Route };
   switch (route.view) {
     case 'dashboard':
-      return { titel: 'Übersicht', sub: 'Alle Projekte auf einen Blick' };
+      return {
+        eyebrow: 'Alles auf einen Blick',
+        titel: 'Übersicht',
+        punkt: true,
+        sub: 'Eigene To-Dos, Fristen und der Stand aller Projekte.',
+        pfad: [{ label: BEREICH }, { label: 'Übersicht' }],
+      };
     case 'fristen':
-      return { titel: 'Fristen & Erinnerungen', sub: 'Anstehende Prozessschritte über alle Projekte' };
+      return {
+        eyebrow: 'Termine im Blick',
+        titel: 'Fristen & Erinnerungen',
+        punkt: true,
+        sub: 'Anstehende Prozessschritte über alle Projekte.',
+        pfad: [start, { label: 'Fristen' }],
+      };
     case 'projekte':
-      return { titel: 'Projekte', sub: 'Projektverwaltung' };
+      return {
+        eyebrow: 'Verwaltung',
+        titel: 'Projekte',
+        punkt: true,
+        sub: 'Projekte anlegen, pflegen und für die Übersicht markieren.',
+        pfad: [start, { label: 'Projekte' }],
+      };
     case 'ketten':
-      return { titel: 'Workflows', sub: 'Standard-Workflows und Projektvarianten' };
+      return {
+        eyebrow: 'Prozessketten',
+        titel: 'Workflows',
+        punkt: true,
+        sub: 'Standard-Workflows und Projektvarianten.',
+        pfad: [start, { label: 'Workflows' }],
+      };
     case 'rollen':
-      return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
+      return {
+        eyebrow: 'Zuständigkeiten',
+        titel: 'Funktionen',
+        punkt: true,
+        sub: 'Projektübergreifend, gegliedert nach Gewerken.',
+        pfad: [start, { label: 'Funktionen' }],
+      };
     case 'vorlagen':
-      return { titel: 'Vorlagen', sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload' };
+      return {
+        eyebrow: 'Texte & Listen',
+        titel: 'Vorlagen',
+        punkt: true,
+        sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload.',
+        pfad: [start, { label: 'Vorlagen' }],
+      };
     case 'projekt':
-      return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
+      return {
+        eyebrow: projekt?.nummer ? `Projekt ${projekt.nummer}` : 'Projekt',
+        titel: projekt?.name ?? 'Projekt',
+        sub: 'Projektarbeitsbereich',
+        pfad: [start, projekte, { label: projekt?.name ?? 'Projekt' }],
+      };
     case 'planlauf':
-      return { titel: laufName ?? 'Planlauf', sub: projektName };
+      return {
+        eyebrow: 'Planlauf',
+        titel: laufName ?? 'Planlauf',
+        sub: projekt?.name,
+        pfad: [
+          start,
+          projekte,
+          ...(projekt
+            ? [{ label: projekt.name, route: { view: 'projekt', projectId: projekt.id, tab: 'uebersicht' } as Route }]
+            : []),
+          { label: laufName ?? 'Planlauf' },
+        ],
+      };
     default:
-      return { titel: 'MC Plan' };
+      return { titel: 'MC Plan', pfad: [{ label: BEREICH }] };
   }
 }

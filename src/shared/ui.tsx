@@ -1,7 +1,7 @@
-/** Wiederverwendbare Oberflächenbausteine im hellen Apple-Stil. */
+/** Wiederverwendbare Oberflächenbausteine im hellen Erscheinungsbild. */
 import { useEffect } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`card ${className}`}>{children}</div>;
@@ -31,17 +31,34 @@ export function Stat({
   wert,
   label,
   ton = '',
+  icon,
+  iconTon,
+  detail,
   onClick,
 }: {
   wert: ReactNode;
   label: string;
   ton?: '' | 'red' | 'orange' | 'green' | 'blue';
+  /** Symbol in der farbigen Kachel vor der Kennzahl. */
+  icon?: IconName;
+  /** Farbe der Symbolkachel; ohne Angabe die Akzentfarbe. */
+  iconTon?: '' | 'orange' | 'red' | 'green' | 'purple' | 'gray';
+  /** Erläuterung unter einer Trennlinie. */
+  detail?: string;
   onClick?: () => void;
 }) {
   const inhalt = (
     <div className={`stat ${ton}`}>
-      <div className="stat-value">{wert}</div>
-      <div className="stat-label">{label}</div>
+      {icon ? (
+        <span className={`stat-icon ${iconTon ?? ''}`}>
+          <Icon name={icon} size={20} />
+        </span>
+      ) : null}
+      <div className="stat-text">
+        <div className="stat-label">{label}</div>
+        <div className="stat-value">{wert}</div>
+      </div>
+      {detail ? <div className="stat-detail">{detail}</div> : null}
     </div>
   );
   if (onClick) {
@@ -253,8 +270,8 @@ export function EmptyState({
 }) {
   return (
     <div className="empty">
-      <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}>
-        <Icon name={icon} size={30} strokeWidth={1.3} />
+      <div className="empty-icon">
+        <Icon name={icon} size={28} strokeWidth={1.5} />
       </div>
       <h3>{titel}</h3>
       {text ? <p>{text}</p> : null}

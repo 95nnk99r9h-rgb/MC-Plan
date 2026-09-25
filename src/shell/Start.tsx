@@ -12,12 +12,20 @@ export function Start() {
           <AppIcon size={38} />
           <div className="start-kopf-text">
             <h1>MC Plan</h1>
-            <p>Bitte einen Bereich wählen.</p>
+            <p>Planlaufmanagement und Baubetriebsplanung</p>
           </div>
           <div className="start-logo">
             <MailaenderLogo height={34} />
           </div>
         </header>
+
+        <div className="start-start">
+          <div className="eyebrow">Mailänder Consult</div>
+          <h2>
+            Bereich wählen<span className="punkt">.</span>
+          </h2>
+          <p>Jeder Bereich arbeitet mit eigenem Datenbestand und eigenen Einstellungen.</p>
+        </div>
 
         <div className="start-kacheln">
           {BEREICHE.map((b) => (

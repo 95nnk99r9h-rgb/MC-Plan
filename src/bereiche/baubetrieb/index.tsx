@@ -60,10 +60,11 @@ function Platzhalter() {
 
       <main className="main">
         <header className="topbar">
-          <div className="topbar-title">
-            <h1>Baubetriebsplanung</h1>
-            <div className="sub">In Vorbereitung</div>
-          </div>
+          <nav className="breadcrumb" aria-label="Pfad">
+            <span className="row" style={{ gap: 0, minWidth: 0 }}>
+              <strong>Baubetriebsplanung</strong>
+            </span>
+          </nav>
           <div className="topbar-logo">
             <MailaenderLogo height={34} />
           </div>
@@ -71,6 +72,12 @@ function Platzhalter() {
 
         <div className="content">
           <div className="content-inner">
+            <div className="seitenkopf">
+              <div className="eyebrow">In Vorbereitung</div>
+              <h1>
+                Baubetriebsplanung<span className="punkt">.</span>
+              </h1>
+            </div>
             {route.view === 'start' ? (
               <Card>
                 <EmptyState

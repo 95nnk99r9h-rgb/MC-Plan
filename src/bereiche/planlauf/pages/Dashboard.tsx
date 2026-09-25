@@ -42,18 +42,36 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <div className="stack">
       <div className="grid grid-4">
-        <Stat wert={laufend.length} label="Laufende Planläufe" />
-        <Stat wert={todos.length} label={`To-Dos (${EIGENE_ROLLE})`} ton="blue" />
+        <Stat
+          wert={laufend.length}
+          label="Laufende Planläufe"
+          icon="plan"
+          detail={`In ${projekte.length} ${projekte.length === 1 ? 'Projekt' : 'Projekten'}`}
+        />
+        <Stat
+          wert={todos.length}
+          label={`To-Dos (${EIGENE_ROLLE})`}
+          ton="blue"
+          icon="check"
+          iconTon="purple"
+          detail="Schritte in eigener Verantwortung"
+        />
         <Stat
           wert={ueberfaellig.length}
           label="Überfällige Schritte"
           ton={ueberfaellig.length ? 'red' : 'green'}
+          icon="glocke"
+          iconTon={ueberfaellig.length ? 'red' : 'green'}
+          detail="Soll-Termin überschritten"
           onClick={() => navigate({ view: 'fristen' })}
         />
         <Stat
           wert={faellig.length}
           label="Demnächst fällig"
           ton={faellig.length ? 'orange' : ''}
+          icon="frist"
+          iconTon="orange"
+          detail="Innerhalb der Vorlaufzeit"
           onClick={() => navigate({ view: 'fristen' })}
         />
       </div>

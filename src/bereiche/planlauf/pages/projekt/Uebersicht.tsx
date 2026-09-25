@@ -127,11 +127,22 @@ export function Uebersicht({
     <div className="stack">
       <Card>
         <div className="kennzahlen">
-          <Stat wert={anzahl('paket')} label="Planpakete" onClick={() => gotoTab('pakete')} />
-          <Stat wert={anzahl('verzeichnis')} label="Planverzeichnisse" onClick={() => gotoTab('plaene')} />
-          <Stat wert={anzahl('plan')} label="Pläne" onClick={() => gotoTab('plaene')} />
-          <Stat wert={faellig} label="Fällige Schritte" ton={faellig ? 'orange' : ''} />
-          <Stat wert={ueberfaellig} label="Überfällige Schritte" ton={ueberfaellig ? 'red' : 'green'} />
+          <Stat wert={anzahl('paket')} label="Planpakete" icon="paket" onClick={() => gotoTab('pakete')} />
+          <Stat
+            wert={anzahl('verzeichnis')}
+            label="Planverzeichnisse"
+            icon="verzeichnis"
+            onClick={() => gotoTab('plaene')}
+          />
+          <Stat wert={anzahl('plan')} label="Pläne" icon="plan" onClick={() => gotoTab('plaene')} />
+          <Stat wert={faellig} label="Fällige Schritte" ton={faellig ? 'orange' : ''} icon="frist" iconTon="orange" />
+          <Stat
+            wert={ueberfaellig}
+            label="Überfällige Schritte"
+            ton={ueberfaellig ? 'red' : 'green'}
+            icon="glocke"
+            iconTon={ueberfaellig ? 'red' : 'green'}
+          />
         </div>
         <div className="card-pad row" style={{ gap: 14 }}>
           <span className="small muted" style={{ flex: 'none' }}>
