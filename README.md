@@ -108,7 +108,8 @@ dem Zwischenspeicher. Der Service Worker ist nur im Produktionsbuild aktiv, in d
 stört er also nicht.
 
 Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü, auf
-Telefonbreite stehen die Kennzahlen zweispaltig, Tabellen scrollen quer bzw. werden – wie die
+Telefonbreite ersetzt eine Leiste am unteren Rand das Menü (Übersicht, Projekte, Fristen, „Mehr“
+öffnet die Seitenleiste), die Kennzahlen stehen zweispaltig, Tabellen scrollen quer bzw. werden – wie die
 Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar bleiben.
 
 ## Funktionsumfang
@@ -415,10 +416,13 @@ beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
 ## Gestaltung
 
-Helles Erscheinungsbild in Anlehnung an Apple: Systemschriftart (SF Pro / `-apple-system`),
-zurückhaltende Flächen auf `#f5f5f7`, weiße Karten mit weichen Radien und feinen Schatten, die
-Hausfarbe von Mailänder Consult `#24456e` als Akzent (auch für alle Fortschrittsbalken),
-transluzente Seitenleiste und Kopfzeile, Segmented Controls und Pill-Buttons. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar.
+Helles, luftiges Erscheinungsbild: Systemschriftart (`-apple-system`, Segoe UI), Flächen in kühlem
+Grau `#f6f8fc`, weiße Karten mit feinem Rahmen (`#e4e9f2`), 16 px Radius und weichem Schatten, die
+Hausfarbe von Mailänder Consult `#24456e` als Akzent (auch für alle Fortschrittsbalken). Die
+Kopfzeile zeigt den Pfad zur aktuellen Seite, der Seitentitel steht groß im Inhalt – mit kleiner
+Überzeile und Untertitel. Kennzahlen tragen eine farbige Symbolkachel, Auswahlen erscheinen als
+Chips, der gewählte Eintrag der Seitenleiste ist in der Akzentfarbe getönt. Die Oberfläche ist bis
+auf Telefonbreite (~400 px) nutzbar.
 
 ## Nächste Schritte (Ausblick)
 

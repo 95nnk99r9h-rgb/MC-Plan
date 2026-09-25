@@ -47,7 +47,7 @@ und bleiben damit als Lesezeichen gültig.
 | Route | Seite | Aktionen |
 | --- | --- | --- |
 | `#/planlauf` bzw. `#/planlauf/dashboard` | Übersicht (`src/bereiche/planlauf/pages/Dashboard.tsx`) | Vier Kacheln: Laufende Planläufe, To-Dos (Planlaufmanagement), Überfällige Schritte, Demnächst fällig – die beiden letzten führen per Klick auf `#/planlauf/fristen`. Tabelle „Meine To-Dos“ mit Schritt, Gewerk, Projekt, Soll-Termin, Status, Erinnerungs-Mail und Erledigt-Haken. Tabelle „Projekte“ mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, demnächst fällig, überfällig, Fortschrittsbalken und „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle (`sichtbareProjekte`). |
-| `#/planlauf/fristen` | Fristen & Erinnerungen (`src/bereiche/planlauf/pages/Fristen.tsx`) | Alle offenen Schritte über alle Projekte, gegliedert nach Projekt. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht. |
+| `#/planlauf/fristen` | Fristen & Erinnerungen (`src/bereiche/planlauf/pages/Fristen.tsx`) | Alle offenen Schritte über alle Projekte, gegliedert nach Projekt. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht und auf dem Telefon über die untere Navigationsleiste. |
 | `#/planlauf/projekte` | Projekte (`src/bereiche/planlauf/pages/Projekte.tsx`) | Projektliste mit Suche über Name, Nummer und Beschreibung; Projekt anlegen (übernimmt alle projektübergreifenden Funktionen als Projektfunktionen), bearbeiten, mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. |
 | `#/planlauf/ketten` | Workflows (`src/bereiche/planlauf/pages/Workflows.tsx`) | Standard-Workflows und projektspezifische Ketten: neue Kette anlegen, Kette bearbeiten, duplizieren (wird zur manuellen Kette), löschen. Je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung / Sonstiges), Verantwortlicher (Vorschlagsliste der Funktionen, je Bezeichnung einmal), Frist in Tagen, Nachweis bei Abschluss, „Weiter mit“, Antworten einer Entscheidung und die Option „E-Mail nach Abschluss“ samt Vorlage. „Weiter mit“ und die Antwortziele nennen die Nummer des Zielschritts im Workflow (`ziele` in `SchrittListe`). |
 | `#/planlauf/rollen` | Funktionen (`src/bereiche/planlauf/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk. Neue Funktion anlegen (Bezeichnung, Kürzel, Farbe, Gewerk, Beschreibung), vorhandene Funktion eines anderen Gewerks übernehmen, bearbeiten, löschen. Über das **+** an den Reitern entsteht ein Gewerk, über „Gewerk … löschen“ am Seitenende entfällt es. |
@@ -97,7 +97,12 @@ abgefragt (`src/bereiche/planlauf/components/SchrittStatus.tsx`).
 
 ### 2.4 Übergreifende Bedienelemente
 
-* **Seitenleiste** (`src/bereiche/planlauf/App.tsx`): Navigation (Übersicht, Projekte, Workflows,
+* **Kopfzeile** (`src/bereiche/planlauf/App.tsx`, `kopfzeile`): Pfad zur aktuellen Seite
+  (z.B. Planlaufmanagement / Projekte / Projektname), dessen vordere Teile anklickbar sind; der
+  Seitentitel steht mit Überzeile und Untertitel groß am Anfang des Inhalts.
+* **Navigationsleiste unten** (nur Telefonbreite, `MobilItem` in `App.tsx`): Übersicht, Projekte,
+  Fristen und „Mehr“, das die Seitenleiste öffnet.
+* **Seitenleiste** (`src/bereiche/planlauf/App.tsx`): Navigation unter „Planlaufmanagement“ (Übersicht, Projekte, Workflows,
   Funktionen, Vorlagen), darunter die markierten Projekte mit vorangestellter
   Projektnummer und der Anzahl überfälliger Schritte. Ganz unten
   **Bereich wechseln** zurück zur Bereichsauswahl
